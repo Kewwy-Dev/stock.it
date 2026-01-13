@@ -1,0 +1,22 @@
+# ไฟล์ความลับ / environment ห้าม commit เด็ดขาด!
+.env
+
+# โฟลเดอร์ dependencies (ติดตั้งใหม่ได้ด้วย composer install)
+vendor/
+# composer.lock สามารถ commit ได้ถ้าต้องการให้ทีมใช้เวอร์ชันเดียวกัน
+
+# ไฟล์ที่ผู้ใช้ upload (เช่น รูปภาพสินค้า)
+uploads/
+
+# log, cache, temp files
+*.log
+storage/logs/
+storage/framework/
+bootstrap/cache/
+
+# ไฟล์ขยะของ Windows / XAMPP / IDE
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.sublime-*
