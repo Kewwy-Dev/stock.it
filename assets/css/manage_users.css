@@ -1,0 +1,42 @@
+body { background: #f8f9fa; }
+    .manage-card { max-width: 1200px; margin: 0.5rem auto; }
+    .table { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .table thead { background: #0d6efd; color: white; }
+    .form-switch .form-check-input { height: 1.5em; width: 3em; }
+    .form-switch .form-check-input:focus { box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
+    .btn-delete { color: #dc3545; }
+    .btn-delete:hover { color: #b02a37; }
+    .profile-thumb {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .profile-placeholder {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      /* background: #e9ecef; */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6c757d;
+      font-size: 1.5rem;
+    }   
+
+    /* Toast Style */
+    .toast {
+      min-width: 280px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      border: none;
+      border-radius: 10px;
+    }
+    .toast-body {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    .toast .btn-close-white {
+      filter: invert(1);
+    }

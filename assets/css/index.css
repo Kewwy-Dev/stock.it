@@ -1,0 +1,154 @@
+:root {
+      --primary: #0d6efd;
+      --success: #198754;
+      --danger: #dc3545;
+    }
+
+    body {
+      font-family: 'Kanit', 'Segoe UI', sans-serif;
+    }
+
+    .navbar {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+    }
+
+    .item-card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+      transition: all .3s;
+    }
+
+    .item-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, .15);
+    }
+
+    .item-img {
+      height: 180px;
+      object-fit: contain;
+      background: #f8f9fa;
+      padding: 1rem;
+    }
+
+    .item-img-placeholder {
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e9ecef;
+      font-size: 3rem;
+      color: #6c757d;
+    }
+
+    .additem_button:hover .showtext-additem {
+      opacity: 1;
+      transition: 0.8s;
+    }
+
+    .showtext-additem {
+      position: fixed;
+      bottom: 6rem;
+      right: 1rem;
+      width: 90px;
+      height: 30px;
+      background: var(--success);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(25, 135, 84, .4);
+      border: none;
+      z-index: 1050;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 56px;
+      height: 56px;
+      background: var(--success);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 2rem;
+      box-shadow: 0 4px 12px rgba(25, 135, 84, .4);
+      border: none;
+      z-index: 1050;
+      display: flex;
+      justify-content: center;
+    }
+
+    .fab:hover {
+      background: #157347;
+      transform: scale(1.1);
+      transition: 0.2s;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      opacity: 0;
+      transition: .2s;
+    }
+
+    .item-card:hover .close-btn {
+      opacity: 1;
+    }
+
+    #imagePreview img {
+      max-height: 250px;
+      margin-top: 10px;
+      border-radius: 8px;
+    }
+
+    .btn-favorite {
+      z-index: 10;
+      transition: all 0.25s ease;
+      background: #f8f9fa;
+    }
+
+    .btn-favorite:hover {
+      transform: scale(1.15);
+    }
+
+    .btn-favorite i.bi-star-fill {
+      color: #ffc107;
+      /* เหลือง Bootstrap warning */
+      filter: drop-shadow(0 0 3px rgba(255, 193, 7, 0.7));
+    }
+
+    .btn-favorite:active {
+      transform: scale(0.92);
+    }
+
+    /* Animation เมื่อกดดาว (เล็กน้อย) */
+    @keyframes starPulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.4);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .btn-favorite.active i {
+      animation: starPulse 0.6s ease;
+    }

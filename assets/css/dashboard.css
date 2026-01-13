@@ -1,0 +1,218 @@
+:root {
+      --primary: #4361ee;
+      --success: #4cc9f0;
+      --warning: #ffc107;
+      --danger: #e74c3c;
+      --gray: #6c757d;
+    }
+
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Kanit', 'Segoe UI', sans-serif;
+      color: #333;
+    }
+
+    .dashboard-container {
+      max-width: 1300px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .page-title {
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .range-selector {
+      display: flex;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 1.8rem;
+      flex-wrap: wrap;
+    }
+
+    .range-btn {
+      padding: 0.5rem 1.2rem;
+      font-weight: 500;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      min-width: 100px;
+    }
+
+    .range-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .range-btn:not(.active) {
+      background: white;
+      color: var(--primary);
+      border: 1.8px solid var(--primary);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* การ์ดสถิติที่คลิกได้ */
+    .stat-card-link {
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+
+    .stat-card-link:hover {
+      color: inherit;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 14px;
+      padding: 1.4rem;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      transition: all 0.3s ease;
+      border-left: 5px solid;
+      height: 100%;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+    }
+
+    .stat-card.primary { border-left-color: var(--primary); }
+    .stat-card.success { border-left-color: var(--success); }
+    .stat-card.warning { border-left-color: var(--warning); }
+    .stat-card.danger  { border-left-color: var(--danger); }
+    .stat-card.dark     { border-left-color: #495057; }
+    .stat-card.info     { border-left-color: #17a2b8; }
+
+    .stat-icon {
+      font-size: 2.2rem;
+      margin-bottom: 0.8rem;
+      opacity: 0.9;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0.5rem 0;
+      color: #2c3e50;
+    }
+
+    .stat-label {
+      font-size: 1rem;
+      color: var(--gray);
+      font-weight: 500;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.8rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, var(--primary), #5d7bff);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1.2rem;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+    }
+
+    .transaction-scroll-container {
+      max-height: 380px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .transaction-table {
+      margin-bottom: 0;
+      width: 100%;
+    }
+
+    .transaction-table thead th {
+      background: #f1f3f5;
+      font-weight: 600;
+      color: #495057;
+      font-size: 0.95rem;
+      padding: 1rem 0.8rem;
+      text-align: center !important;
+      vertical-align: middle;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .transaction-table tbody td {
+      padding: 1rem 0.8rem;
+      vertical-align: middle;
+      font-size: 0.95rem;
+    }
+
+    .transaction-table .col-type { text-align: center; min-width: 110px; }
+    .transaction-table .col-item { text-align: left; }
+    .transaction-table .col-quantity { text-align: center !important; min-width: 100px; }
+    .transaction-table .col-date { text-align: center !important; min-width: 110px; }
+
+    .badge-in, .badge-out {
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      min-width: 90px;
+      display: inline-block;
+    }
+
+    .badge-in { background: #d4edda; color: #155724; }
+    .badge-out { background: #f8d7da; color: #721c24; }
+
+    .quantity-in, .quantity-out {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    @media (max-width: 992px) {
+      .main-content { grid-template-columns: 1fr; }
+      .chart-container { height: 300px; }
+      .transaction-scroll-container { max-height: 350px; }
+    }
+
+    @media (max-width: 576px) {
+      .page-title { font-size: 1.6rem; }
+      .stat-number { font-size: 1.8rem; }
+      .stat-icon { font-size: 2rem; }
+      .range-btn { padding: 0.5rem 1rem; font-size: 0.9rem; }
+      .stats-grid { gap: 1rem; }
+      .stat-card { padding: 1.2rem; }
+      .transaction-table thead th,
+      .transaction-table tbody td {
+        padding: 0.8rem 0.5rem;
+        font-size: 0.9rem;
+      }
+      .transaction-scroll-container { max-height: 300px; }
+    }
