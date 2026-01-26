@@ -24,19 +24,4 @@ body { background: #f8f9fa; }
       justify-content: center;
       color: #6c757d;
       font-size: 1.5rem;
-    }   
-
-    /* Toast Style */
-    .toast {
-      min-width: 280px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-      border: none;
-      border-radius: 10px;
-    }
-    .toast-body {
-      font-size: 1rem;
-      font-weight: 500;
-    }
-    .toast .btn-close-white {
-      filter: invert(1);
     }

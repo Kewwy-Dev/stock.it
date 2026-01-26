@@ -53,17 +53,21 @@ $trans = $pdo->query("
            i.name AS item_name,
            e.name AS emp_name,
            d.name AS dept_name,
-           c.name AS company_name
+           c.name AS company_name,
+           ct.id   AS categories_id,
+           ct.name AS categories_name
     FROM stock_transactions t
     LEFT JOIN items i ON t.item_id = i.id
     LEFT JOIN employees e ON t.employee_id = e.id
     LEFT JOIN departments d ON e.department_id = d.id
     LEFT JOIN companies c ON t.company_id = c.id
+    LEFT JOIN categories ct ON i.category_id = ct.id
     ORDER BY t.transaction_date DESC, t.created_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $items = $pdo->query("SELECT id, name FROM items ORDER BY name")->fetchAll();
 $companies = $pdo->query("SELECT id, name FROM companies ORDER BY name")->fetchAll();
+$categories = $pdo->query("SELECT id, name FROM categories ORDER BY name")->fetchAll();
 
 // JSON สำหรับ JavaScript (ปลอดภัย 100%)
 $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
@@ -92,58 +96,127 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
       <i class="bi bi-clock-history me-2"></i>ประวัติการเบิก-รับเข้าอุปกรณ์
     </h2>
 
-    <!-- Filter Bar -->
-    <div class="filter-bar shadow-sm mb-4 p-3 bg-white rounded-3">
-      <div class="row g-3 align-items-end">
-        <div class="col-md-2">
-          <label class="form-label mb-1 text-muted small fw-medium">ชื่ออุปกรณ์</label>
-          <select id="filterItem" class="form-select form-select-sm">
-            <option value="">ทุกอุปกรณ์</option>
-            <?php foreach ($items as $it): ?>
-              <option value="<?= $it['id'] ?>"><?= htmlspecialchars($it['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label mb-1 text-muted small fw-medium">ประเภท</label>
-          <select id="filterType" class="form-select form-select-sm">
-            <option value="">ทุกประเภท</option>
-            <option value="IN">เพิ่มสต็อก</option>
-            <option value="OUT">เบิกออก</option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label mb-1 text-muted small fw-medium">บริษัท</label>
-          <select id="filterCompany" class="form-select form-select-sm">
-            <option value="">ทุกบริษัท</option>
-            <?php foreach ($companies as $c): ?>
-              <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-
-        <div class="col-md-3">
-          <label class="form-label mb-1 text-muted small fw-medium">ช่วงวันที่</label>
-          <div class="input-group input-group-sm">
-            <input type="text" id="filterDateRange" class="form-control flatpickr-input" placeholder="เลือกช่วงวันที่" readonly>
-            <span class="input-group-text bg-white border-start-0">
-              <i class="bi bi-calendar3 text-muted"></i>
+    <!-- Filter Bar ใน history.php - แทนที่ส่วนเดิมทั้งหมด -->
+    <div class="filter-bar mb-4 p-3 rounded-3 shadow-sm bg-white">
+      <div class="row g-1 align-items-end">
+        <!-- วันที่ -->
+        <div class="col-12 col-md-3">
+          <label class="form-label fw-medium">ช่วงวันที่</label>
+          <div class="input-group">
+            <input type="text" class="form-control flatpickr-input" id="filterDateRange" placeholder="เลือกช่วงวันที่" readonly>
+            <span class="input-group-text bg-white border-start-0 cursor-pointer" onclick="fp?.open();">
+              <i class="bi bi-calendar-event text-primary"></i>
             </span>
           </div>
         </div>
 
-        <div class="col-md-1">
-          <button id="clearFilterBtn" class="btn btn-outline-primary btn-sm w-100">
-            <i class="bi bi-funnel me-1"></i>ล้าง
-          </button>
+        <!-- หมวดหมู่ -->
+        <div class="col-12 col-md-3 col-lg-2">
+          <label class="form-label fw-medium">หมวดหมู่</label>
+          <div class="dropdown">
+            <button class="btn border d-flex align-items-center justify-content-between w-100 custom-filter-btn"
+              type="button" id="categoryDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-grid-3x3-gap-fill text-primary fs-5"></i>
+                <span id="categoryLabel" class="text-truncate">— หมวดหมู่สินค้า —</span>
+              </div>
+              <i class="bi bi-chevron-down small text-muted"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end w-100 shadow" aria-labelledby="categoryDropdown" style="max-height: 320px; overflow-y: auto;">
+              <li><a class="dropdown-item" href="#" data-value="">— หมวดหมู่สินค้า —</a></li>
+              <?php foreach ($categories as $ct): ?>
+                <li><a class="dropdown-item" href="#" data-value="<?= $ct['id'] ?>"><?= htmlspecialchars($ct['name']) ?></a></li>
+              <?php endforeach; ?>
+              <li>
+                <hr class="dropdown-divider my-1">
+              </li>
+              <li><a class="dropdown-item text-danger fw-medium" href="#" id="clearCategory">— ล้าง —</a></li>
+            </ul>
+          </div>
+          <input type="hidden" id="filterCategory" value="">
         </div>
 
-        <div class="col-md-2">
-          <button id="exportBtn" class="btn btn-success btn-sm w-100">
-            <i class="bi bi-file-earmark-excel me-1"></i>
-            <span class="d-none d-md-inline">ส่งออก Excel</span>
+        <!-- อุปกรณ์ -->
+        <div class="col-12 col-md-3">
+          <label class="form-label fw-medium">อุปกรณ์</label>
+          <div class="dropdown">
+            <button class="btn border d-flex align-items-center justify-content-between w-100 custom-filter-btn"
+              type="button" id="itemDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-search text-primary fs-5"></i>
+                <span id="itemLabel" class="text-truncate">— ค้นหาอุปกรณ์ —</span>
+              </div>
+              <i class="bi bi-chevron-down small text-muted"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end w-100 shadow" aria-labelledby="itemDropdown" style="max-height: 320px; overflow-y: auto;">
+              <li><a class="dropdown-item" href="#" data-value="">— ค้นหาอุปกรณ์ —</a></li>
+              <?php foreach ($items as $item): ?>
+                <li><a class="dropdown-item" href="#" data-value="<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></a></li>
+              <?php endforeach; ?>
+              <li>
+                <hr class="dropdown-divider my-1">
+              </li>
+              <li><a class="dropdown-item text-danger fw-medium" href="#" id="clearItem">— ล้าง —</a></li>
+            </ul>
+          </div>
+          <input type="hidden" id="filterItem" value="">
+        </div>
+
+        <!-- ประเภท -->
+        <div class="col-12 col-md-3 col-lg-2">
+          <label class="form-label fw-medium">ประเภท</label>
+          <div class="dropdown">
+            <button class="btn border d-flex align-items-center justify-content-between w-100 custom-filter-btn"
+              type="button" id="typeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-arrow-left-right text-primary fs-5"></i>
+                <span id="typeLabel" class="text-truncate">— ทุกประเภท —</span>
+              </div>
+              <i class="bi bi-chevron-down small text-muted"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end w-100 shadow" aria-labelledby="typeDropdown">
+              <li><a class="dropdown-item" href="#" data-value="">— ทุกประเภท —</a></li>
+              <li><a class="dropdown-item" href="#" data-value="IN">เข้า</a></li>
+              <li><a class="dropdown-item" href="#" data-value="OUT">ออก</a></li>
+              <li>
+                <hr class="dropdown-divider my-1">
+                </hr>
+              <li><a class="dropdown-item text-danger fw-medium" href="#" id="clearType">— ล้าง —</a></li>
+            </ul>
+          </div>
+          <input type="hidden" id="filterType" value="">
+        </div>
+
+        <!-- บริษัท -->
+        <div class="col-12 col-md-3 col-lg-2">
+          <label class="form-label fw-medium">บริษัท</label>
+          <div class="dropdown">
+            <button class="btn border d-flex align-items-center justify-content-between w-100 custom-filter-btn"
+              type="button" id="companyDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-building text-primary fs-5"></i>
+                <span id="companyLabel" class="text-truncate">— ทุกบริษัท —</span>
+              </div>
+              <i class="bi bi-chevron-down small text-muted"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end w-100 shadow" aria-labelledby="companyDropdown" style="max-height: 320px; overflow-y: auto;">
+              <li><a class="dropdown-item" href="#" data-value="">— ทุกบริษัท —</a></li>
+              <?php foreach ($companies as $c): ?>
+                <li><a class="dropdown-item" href="#" data-value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></a></li>
+              <?php endforeach; ?>
+              <li>
+                <hr class="dropdown-divider my-1">
+              </li>
+              <li><a class="dropdown-item text-danger fw-medium" href="#" id="clearCompany">— ล้าง —</a></li>
+            </ul>
+          </div>
+          <input type="hidden" id="filterCompany" value="">
+        </div>
+
+        <!-- ปุ่มล้างทั้งหมด -->
+        <div class="clearfilter col-12 col-md-3 col-lg-12 mt-lg-3">
+          <button id="clearFilterBtn" class="btn btn-outline-danger w-100">
+            <i class="bi bi-arrow-repeat me-1"></i> ล้างตัวกรอง
           </button>
         </div>
       </div>
@@ -165,17 +238,21 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover mb-0 align-middle">
-            <thead class="table-light sticky-top">
+            <thead class="table-light">
               <tr>
                 <th class="border-top-0">วันที่</th>
                 <th class="border-top-0">อุปกรณ์</th>
-                <th class="border-top-0">ประเภท</th>
                 <th class="border-top-0 text-center">จำนวน</th>
                 <th class="border-top-0 text-center">คงเหลือ</th>
                 <th class="border-top-0">ผู้เบิก/แผนก</th>
                 <th class="border-top-0">บริษัท</th>
                 <th class="border-top-0">หมายเหตุ</th>
-                <th class="border-top-0" width="90"></th>
+                <th class="border-top-0" width="90">
+                  <button id="exportBtn" class="btn btn-success btn-sm w-100 d-flex justify-content-center">
+                    <i class="bi bi-cloud-arrow-up-fill me-1"></i>
+                    <span class="d-none d-md-inline">Excel</span>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody id="historyBody">
@@ -201,41 +278,6 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
     </nav>
   </div>
 
-  <!-- Delete Modal -->
-  <div class="modal fade" id="delModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content border-0 shadow-lg">
-        <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title mb-0">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>ยืนยันการลบ
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-3">ต้องการลบรายการนี้หรือไม่? การลบจะปรับสต็อกอัตโนมัติ</p>
-          <div class="alert alert-warning p-2">
-            <strong id="delInfo" class="text-danger"></strong>
-          </div>
-        </div>
-        <div class="modal-footer border-0">
-          <form method="post" class="d-flex w-100 justify-content-between gap-2">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" name="delete_id" id="delId">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              <i class="bi bi-x-circle me-1"></i>ยกเลิก
-            </button>
-            <button type="submit" class="btn btn-danger px-4">
-              <i class="bi bi-trash3-fill me-2"></i>ลบถาวร
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Container -->
-  <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1099"></div>
-
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -243,11 +285,15 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 
   <!-- ส่งข้อมูลไป JS -->
   <script>
+    window.csrfToken = "<?= $_SESSION['csrf_token'] ?>";
     window.historyTransactions = <?= $json_trans ?>;
   </script>
 
   <!-- โหลด JS แยก -->
   <script src="assets/js/history.js" defer></script>
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="assets/js/toast.js"></script>
 </body>
 
 </html>

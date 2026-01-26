@@ -57,3 +57,50 @@ document
       reader.readAsDataURL(file);
     }
   });
+// ฟังก์ชันจัดการ submit แบบ AJAX + SweetAlert
+function handleFormSubmit(formId, successRedirect = true) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch("profile.php", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        console.log("HTTP error! status:", response.status);
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Response จาก server:", result);
+
+      Swal.fire({
+        icon: result.success ? "success" : "error",
+        title: result.success ? "สำเร็จ" : "เกิดข้อผิดพลาด",
+        text: result.message,
+        timer: result.success ? 1800 : 3000,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+      }).then(() => {
+        if (result.success && successRedirect) {
+          window.location.reload(); // หรือ window.location.href = "profile.php"
+        }
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่",
+      });
+    }
+  });
+}
+// เรียกใช้ทั้งสองฟอร์ม
+handleFormSubmit("profileForm", true);
+handleFormSubmit("changePasswordForm", true);

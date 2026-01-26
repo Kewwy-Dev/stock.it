@@ -1,15 +1,16 @@
-// assets/js/history.js - UI แบบเดิม + clearFilter ใช้งานได้
+// assets/js/history.js
+// เวอร์ชันสมบูรณ์ - รองรับ dropdown menu สำหรับกรองทั้งหมด
 
 let data = [];
 let currentPage = 1;
 const rowsPerPage = 10;
 let hiddenFrom, hiddenTo, fp;
 
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('History JS loaded');
-  
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("History JS loaded");
+
   data = window.historyTransactions || [];
-  console.log('Transactions loaded:', data.length, 'items');
+  console.log("Transactions loaded:", data.length, "items");
 
   initHiddenInputs();
   initFlatpickr();
@@ -19,19 +20,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initHiddenInputs() {
-  hiddenFrom = document.getElementById('filterDateFrom');
+  hiddenFrom = document.getElementById("filterDateFrom");
   if (!hiddenFrom) {
-    hiddenFrom = document.createElement('input');
-    hiddenFrom.type = 'hidden';
-    hiddenFrom.id = 'filterDateFrom';
+    hiddenFrom = document.createElement("input");
+    hiddenFrom.type = "hidden";
+    hiddenFrom.id = "filterDateFrom";
     document.body.appendChild(hiddenFrom);
   }
 
-  hiddenTo = document.getElementById('filterDateTo');
+  hiddenTo = document.getElementById("filterDateTo");
   if (!hiddenTo) {
-    hiddenTo = document.createElement('input');
-    hiddenTo.type = 'hidden';
-    hiddenTo.id = 'filterDateTo';
+    hiddenTo = document.createElement("input");
+    hiddenTo.type = "hidden";
+    hiddenTo.id = "filterDateTo";
     document.body.appendChild(hiddenTo);
   }
 }
@@ -44,288 +45,365 @@ function initFlatpickr() {
     conjunction: " ถึง ",
     allowInput: true,
     clickOpens: true,
-    onChange: updateFilter,
-    onClose: updateFilter
+    onChange: function (selectedDates, dateStr, instance) {
+      const [from, to] = dateStr.split(" ถึง ");
+      hiddenFrom.value = from || "";
+      hiddenTo.value = to || "";
+      currentPage = 1;
+      render(getFilteredData());
+      updateFilterSummary();
+    },
+    onClose: function () {
+      updateFilterSummary();
+    },
   });
 }
 
 function initEventListeners() {
-  // Filter selects
-  ['filterItem', 'filterType', 'filterCompany'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('change', () => {
+  // จัดการการเลือกใน dropdown menu ทั้ง 4 ตัว
+  document
+    .querySelectorAll(".dropdown-menu a.dropdown-item:not(.text-danger)")
+    .forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.preventDefault();
+        const dropdownMenu = item.closest(".dropdown-menu");
+        const button = dropdownMenu.previousElementSibling; // ปุ่ม dropdown
+        const labelSpan = button.querySelector("span");
+        const hiddenInput = button
+          .closest(".col-12, .col-md-3, .col-md-2, .col-lg-2")
+          ?.querySelector('input[type="hidden"]');
+
+        // อัปเดตข้อความบนปุ่ม
+        labelSpan.textContent = item.textContent.trim();
+
+        // อัปเดตค่าใน hidden input
+        if (hiddenInput) {
+          hiddenInput.value = item.dataset.value || "";
+        }
+
+        // อัปเดต active class
+        dropdownMenu
+          .querySelectorAll(".dropdown-item")
+          .forEach((i) => i.classList.remove("active"));
+        item.classList.add("active");
+
         currentPage = 1;
         render(getFilteredData());
+        updateFilterSummary();
       });
-    }
+    });
+
+  // ล้างเฉพาะหมวดหมู่
+  document.getElementById("clearCategory")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    clearDropdown(
+      "categoryDropdown",
+      "categoryLabel",
+      "filterCategory",
+      "— หมวดหมู่สินค้า —",
+    );
   });
 
-  // Clear Filter Button
-  const clearBtn = document.getElementById('clearFilterBtn');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', clearFilter);
-  }
+  // ล้างเฉพาะอุปกรณ์
+  document.getElementById("clearItem")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    clearDropdown(
+      "itemDropdown",
+      "itemLabel",
+      "filterItem",
+      "— ค้นหาอุปกรณ์ —",
+    );
+  });
+
+  // ล้างเฉพาะประเภท
+  document.getElementById("clearType")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    clearDropdown("typeDropdown", "typeLabel", "filterType", "— ทุกประเภท —");
+  });
+
+  // ล้างเฉพาะบริษัท
+  document.getElementById("clearCompany")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    clearDropdown(
+      "companyDropdown",
+      "companyLabel",
+      "filterCompany",
+      "— ทุกบริษัท —",
+    );
+  });
+
+  // ปุ่มล้างทั้งหมด
+  document
+    .getElementById("clearFilterBtn")
+    ?.addEventListener("click", clearAllFilters);
 
   // Export Button
-  const exportBtn = document.getElementById('exportBtn');
-  if (exportBtn) {
-    exportBtn.addEventListener('click', exportCSV);
-  }
-
-  // Delete Modal
-  const delModal = document.getElementById('delModal');
-  if (delModal) {
-    delModal.addEventListener('show.bs.modal', e => {
-      const btn = e.relatedTarget;
-      document.getElementById('delId').value = btn.dataset.id;
-      document.getElementById('delInfo').textContent = btn.dataset.info;
-    });
-  }
+  document.getElementById("exportBtn")?.addEventListener("click", exportCSV);
 }
 
-function clearFilter() {
-  console.log('🔄 Clear Filter clicked');
+function clearDropdown(dropdownId, labelId, hiddenId, defaultText) {
+  const label = document.getElementById(labelId);
+  const hidden = document.getElementById(hiddenId);
 
-  ['filterItem', 'filterType', 'filterCompany'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+  if (label) label.textContent = defaultText;
+  if (hidden) hidden.value = "";
 
-  const dateRange = document.getElementById('filterDateRange');
-  if (dateRange) dateRange.value = '';
+  // รีเซ็ต active ให้ตัว "ทั้งหมด"
+  const menu = document.querySelector(`#${dropdownId} + .dropdown-menu`);
+  if (menu) {
+    menu
+      .querySelectorAll(".dropdown-item")
+      .forEach((i) => i.classList.remove("active"));
+    menu.querySelector('.dropdown-item[data-value=""]').classList.add("active");
+  }
 
-  if (hiddenFrom) hiddenFrom.value = '';
-  if (hiddenTo) hiddenTo.value = '';
+  currentPage = 1;
+  render(getFilteredData());
+  updateFilterSummary();
+}
+
+function clearAllFilters() {
+  // ล้าง Flatpickr
   if (fp) fp.clear();
+
+  // ล้าง hidden date
+  if (hiddenFrom) hiddenFrom.value = "";
+  if (hiddenTo) hiddenTo.value = "";
+
+  // ล้าง dropdown ทั้งหมด
+  clearDropdown(
+    "categoryDropdown",
+    "categoryLabel",
+    "filterCategory",
+    "— หมวดหมู่สินค้า —",
+  );
+  clearDropdown("itemDropdown", "itemLabel", "filterItem", "— ค้นหาอุปกรณ์ —");
+  clearDropdown("typeDropdown", "typeLabel", "filterType", "— ทุกประเภท —");
+  clearDropdown(
+    "companyDropdown",
+    "companyLabel",
+    "filterCompany",
+    "— ทุกบริษัท —",
+  );
 
   currentPage = 1;
   render(data);
-
-  console.log('✅ Filter cleared');
-}
-
-function updateFilter() {
-  const selected = fp.selectedDates;
-  if (selected.length === 2) {
-    hiddenFrom.value = selected[0].toISOString().slice(0, 10);
-    hiddenTo.value = selected[1].toISOString().slice(0, 10);
-  } else {
-    hiddenFrom.value = '';
-    hiddenTo.value = '';
-  }
-  currentPage = 1;
-  render(getFilteredData());
+  updateFilterSummary();
 }
 
 function getFilteredData() {
   let filtered = [...data];
 
-  const itemId = document.getElementById('filterItem')?.value || '';
-  const type = document.getElementById('filterType')?.value || '';
-  const companyId = document.getElementById('filterCompany')?.value || '';
-  const dateFrom = hiddenFrom?.value || '';
-  const dateTo = hiddenTo?.value || '';
+  const categoryVal = document.getElementById("filterCategory")?.value || "";
+  const itemVal = document.getElementById("filterItem")?.value || "";
+  const typeVal = document.getElementById("filterType")?.value || "";
+  const companyVal = document.getElementById("filterCompany")?.value || "";
+  const dateFrom = hiddenFrom?.value || "";
+  const dateTo = hiddenTo?.value || "";
 
-  if (itemId) filtered = filtered.filter(r => String(r.item_id) === itemId);
-  if (type) filtered = filtered.filter(r => r.type === type);
-  if (companyId) filtered = filtered.filter(r => String(r.company_id) === companyId);
-  if (dateFrom) filtered = filtered.filter(r => r.transaction_date >= dateFrom);
-  if (dateTo) filtered = filtered.filter(r => r.transaction_date <= dateTo);
+  if (categoryVal) {
+    filtered = filtered.filter(
+      (t) => String(t.categories_id || t.category_id || "") === categoryVal,
+    );
+  }
+  if (itemVal) {
+    filtered = filtered.filter((t) => String(t.item_id) === itemVal);
+  }
+  if (typeVal) {
+    filtered = filtered.filter((t) => t.type === typeVal);
+  }
+  if (companyVal) {
+    filtered = filtered.filter((t) => String(t.company_id) === companyVal);
+  }
+  if (dateFrom && dateTo) {
+    filtered = filtered.filter((t) => {
+      const transDate = t.created_at?.split(" ")[0] || t.transaction_date || "";
+      return transDate >= dateFrom && transDate <= dateTo;
+    });
+  }
 
   return filtered;
 }
 
 function render(filtered = data) {
-  const tbody = document.getElementById('historyBody');
-  const noData = document.getElementById('noData');
-  const summary = document.getElementById('filterSummary');
-  const countEl = document.getElementById('resultCount');
-  const detailsEl = document.getElementById('filterDetails');
+  const tbody = document.getElementById("historyBody");
+  const noData = document.getElementById("noData");
 
   if (!tbody) {
-    console.error('ไม่พบตาราง #historyBody');
+    console.error("ไม่พบ #historyBody");
     return;
   }
 
-  tbody.innerHTML = '';
+  tbody.innerHTML = "";
 
-  const totalItems = filtered.length;
-  if (countEl) countEl.textContent = totalItems.toLocaleString('th-TH');
-
-  // สรุปตัวกรอง (แบบเดิม)
-  let filters = [];
-  const itemSelect = document.getElementById('filterItem');
-  const typeSelect = document.getElementById('filterType');
-  const companySelect = document.getElementById('filterCompany');
-
-  if (itemSelect?.value) {
-    filters.push(`อุปกรณ์: <span class="badge bg-primary">${esc(itemSelect.selectedOptions[0]?.text || '')}</span>`);
-  }
-  if (typeSelect?.value) {
-    const typeText = typeSelect.value === 'IN' ? 'เพิ่มสต็อก' : 'เบิก';
-    filters.push(`รายการ: <span class="badge bg-info">${typeText}</span>`);
-  }
-  if (companySelect?.value) {
-    filters.push(`บริษัท: <span class="badge bg-secondary">${esc(companySelect.selectedOptions[0]?.text || '')}</span>`);
-  }
-  if (hiddenFrom?.value && hiddenTo?.value) {
-    filters.push(`ช่วงวันที่: <span class="badge bg-success">${formatDate(hiddenFrom.value)} - ${formatDate(hiddenTo.value)}</span>`);
+  if (filtered.length === 0) {
+    noData?.classList.remove("d-none");
+    updatePagination(0);
+    updateFilterSummary(0);
+    return;
   }
 
-  if (filters.length > 0 && detailsEl && summary) {
-    detailsEl.innerHTML = ' (' + filters.join(' | ') + ')';
-    summary.classList.remove('d-none');
-  } else if (detailsEl && summary) {
-    detailsEl.innerHTML = ' (แสดงข้อมูลทั้งหมด)';
-    summary.classList.remove('d-none');
-  }
-
-  if (totalItems === 0) {
-    noData?.classList.remove('d-none');
-    summary?.classList.add('d-none');
-  } else {
-    noData?.classList.add('d-none');
-  }
-
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
-  if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+  noData?.classList.add("d-none");
 
   const start = (currentPage - 1) * rowsPerPage;
-  const end = Math.min(start + rowsPerPage, totalItems);
+  const end = Math.min(start + rowsPerPage, filtered.length);
   const pageData = filtered.slice(start, end);
 
-  pageData.forEach(r => {
-    const tr = document.createElement('tr');
-    const typeBadge = r.type === 'IN'
-      ? '<span class="badge badge-in">เพิ่ม</span>'
-      : '<span class="badge badge-out">เบิก</span>';
+  pageData.forEach((r) => {
+    const tr = document.createElement("tr");
 
     const emp = r.emp_name
-      ? `${esc(r.emp_name)}${r.dept_name ? ' (' + esc(r.dept_name) + ')' : ''}`
-      : '-';
+      ? `${esc(r.emp_name)}${r.dept_name ? " (" + esc(r.dept_name) + ")" : ""}`
+      : "-";
 
     tr.innerHTML = `
-      <td>${formatDate(r.transaction_date)}</td>
-      <td><strong>${esc(r.item_name || '-')}</strong></td>
-      <td>${typeBadge}</td>
+      <td>${formatDate( r.transaction_date || "-")}</td>
+      <td>${esc(r.item_name || "-")}</td>
       <td class="text-center">${formatNum(r.quantity)}</td>
-      <td class="text-center">${formatNum(r.stock)}</td>
+      <td class="text-center">${formatNum(r.current_stock_after || r.stock || "-")}</td>
       <td>${emp}</td>
-      <td>${r.company_name ? esc(r.company_name) : '-'}</td>
-      <td>${r.memo ? esc(r.memo) : '-'}</td>
-      <td>
-        <button class="btn btn-sm btn-outline-danger" 
-                data-bs-toggle="modal" data-bs-target="#delModal"
-                data-id="${r.id}" 
-                data-info="${esc(r.item_name || '-')} - ${formatDate(r.transaction_date)}">
-          <i class="bi bi-trash3 me-1"></i>ลบ
+      <td>${esc(r.company_name || "-")}</td>
+      <td>${esc(r.note || r.memo || "-")}</td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-danger delete-btn"
+                data-id="${r.id}"
+                data-info="${esc(r.item_name || "-")}">
+          <i class="bi bi-trash"></i> ลบ
         </button>
-      </td>`;
+      </td>
+    `;
     tbody.appendChild(tr);
   });
 
-  renderPagination(totalItems, totalPages);
+  updatePagination(filtered.length);
+  updateFilterSummary(filtered.length);
 }
 
-function renderPagination(totalItems, totalPages) {
-  const container = document.getElementById('paginationContainer');
-  if (!container || totalPages <= 1) return;
+function updatePagination(totalItems) {
+  const container = document.getElementById("paginationContainer");
+  if (!container) return;
 
-  container.innerHTML = '';
+  container.innerHTML = "";
 
-  const createPageItem = (text, pageNum, disabled = false, active = false) => {
-    const li = document.createElement('li');
-    li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
-    const a = document.createElement('a');
-    a.className = 'page-link';
-    a.href = '#';
-    a.textContent = text;
-    a.dataset.page = pageNum;
-    
-    if (!disabled && !active) {
-      a.addEventListener('click', e => {
-        e.preventDefault();
-        currentPage = Number(pageNum);
-        render(getFilteredData());
-      });
-    } else {
-      a.addEventListener('click', e => e.preventDefault());
+  const totalPages = Math.ceil(totalItems / rowsPerPage);
+  if (totalPages <= 1) return;
+
+  // Previous
+  const prev = document.createElement("li");
+  prev.className = `page-item ${currentPage === 1 ? "disabled" : ""}`;
+  prev.innerHTML = `<a class="page-link" href="#">ก่อนหน้า</a>`;
+  prev.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (currentPage > 1) {
+      currentPage--;
+      render(getFilteredData());
     }
-    li.appendChild(a);
-    return li;
-  };
+  });
+  container.appendChild(prev);
 
-  container.appendChild(createPageItem('ก่อนหน้า', currentPage - 1, currentPage === 1));
-  
-  const pageWindow = 2;
-  let startPage = Math.max(1, currentPage - pageWindow);
-  let endPage = Math.min(totalPages, currentPage + pageWindow);
+  // Pages
+  for (let i = 1; i <= totalPages; i++) {
+    const li = document.createElement("li");
+    li.className = `page-item ${i === currentPage ? "active" : ""}`;
+    li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+    li.addEventListener("click", (e) => {
+      e.preventDefault();
+      currentPage = i;
+      render(getFilteredData());
+    });
+    container.appendChild(li);
+  }
 
-  if (startPage > 1) {
-    container.appendChild(createPageItem('1', 1));
-    if (startPage > 2) container.appendChild(createPageItem('...', 0, true));
+  // Next
+  const next = document.createElement("li");
+  next.className = `page-item ${currentPage === totalPages ? "disabled" : ""}`;
+  next.innerHTML = `<a class="page-link" href="#">ถัดไป</a>`;
+  next.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (currentPage < totalPages) {
+      currentPage++;
+      render(getFilteredData());
+    }
+  });
+  container.appendChild(next);
+}
+
+function updateFilterSummary(count) {
+  const summary = document.getElementById("filterSummary");
+  const totalSpan = document.getElementById("totalResults");
+
+  if (!summary || !totalSpan) return;
+
+  if (count === data.length && !hasAnyFilter()) {
+    summary.classList.add("d-none");
+  } else {
+    summary.classList.remove("d-none");
+    totalSpan.textContent = count;
   }
-  
-  for (let i = startPage; i <= endPage; i++) {
-    container.appendChild(createPageItem(i, i, false, i === currentPage));
-  }
-  
-  if (endPage < totalPages) {
-    if (endPage < totalPages - 1) container.appendChild(createPageItem('...', 0, true));
-    container.appendChild(createPageItem(totalPages, totalPages));
-  }
-  
-  container.appendChild(createPageItem('ถัดไป', currentPage + 1, currentPage === totalPages));
+}
+
+function hasAnyFilter() {
+  return (
+    document.getElementById("filterCategory")?.value ||
+    document.getElementById("filterItem")?.value ||
+    document.getElementById("filterType")?.value ||
+    document.getElementById("filterCompany")?.value ||
+    hiddenFrom?.value ||
+    hiddenTo?.value
+  );
 }
 
 // Utility Functions
 function esc(t) {
-  const d = document.createElement('div');
-  d.textContent = t ?? '-';
+  const d = document.createElement("div");
+  d.textContent = t ?? "-";
   return d.innerHTML;
 }
 
 function formatDate(d) {
-  if (!d) return '-';
-  const [y, m, day] = d.split('-');
+  if (!d) return "-";
+  const [y, m, day] = d.split("-");
   return `${day}/${m}/${y}`;
 }
 
 function formatNum(n) {
-  return new Intl.NumberFormat('th-TH').format(Number(n) || 0);
+  return new Intl.NumberFormat("th-TH").format(Number(n) || 0);
 }
 
 function exportCSV() {
   const filtered = getFilteredData();
   if (filtered.length === 0) {
-    alert('ไม่มีข้อมูลตามตัวกรองที่เลือกเพื่อส่งออก');
+    alert("ไม่มีข้อมูลตามตัวกรองที่เลือกเพื่อส่งออก");
     return;
   }
 
-  let csv = '\uFEFFวันที่,ชื่ออุปกรณ์,รายการ,จำนวน,คงเหลือ,ชื่อผู้เบิก/แผนก,บริษัท,หมายเหตุ\n';
+  let csv =
+    "\uFEFFวันที่,อุปกรณ์,หมวดหมู่,ประเภท,จำนวน,คงเหลือ,ผู้เบิก/แผนก,บริษัท,หมายเหตุ\n";
 
-  filtered.forEach(r => {
-    const typeText = r.type === 'IN' ? 'เพิ่มสต็อก' : 'เบิกออก';
-    const emp = r.emp_name ? r.emp_name + (r.dept_name ? ' (' + r.dept_name + ')' : '') : '-';
-    csv += [
-      formatDate(r.transaction_date),
-      r.item_name || '-',
-      typeText,
-      r.quantity,
-      r.stock,
-      emp,
-      r.company_name || '-',
-      r.memo || '-'
-    ].join(',') + '\n';
+  filtered.forEach((r) => {
+    const typeText = r.type === "IN" ? "เข้า" : "ออก";
+    const emp = r.emp_name
+      ? r.emp_name + (r.dept_name ? " (" + r.dept_name + ")" : "")
+      : "-";
+    csv +=
+      [
+        formatDate(r.transaction_date),
+        r.item_name || "-",
+        r.categories_name || "-",
+        typeText,
+        r.quantity || 0,
+        r.current_stock_after || r.stock || "-",
+        emp,
+        r.company_name || "-",
+        r.note || r.memo || "-",
+      ].join(",") + "\n";
   });
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', 'ประวัติการเบิก-รับเข้าอุปกรณ์_' + new Date().toISOString().slice(0,10) + '.csv');
-  link.style.visibility = 'hidden';
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `ประวัติการเบิก-รับเข้าอุปกรณ์_${new Date().toISOString().split("T")[0]}.csv`;
+  link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -336,13 +414,57 @@ function initToast() {
   if (toastData) {
     try {
       const d = JSON.parse(toastData);
-      const t = document.createElement('div');
-      t.className = `toast align-items-center text-bg-${d.type==='error'?'danger':'success'} border-0`;
+      const t = document.createElement("div");
+      t.className = `toast align-items-center text-bg-${d.type === "error" ? "danger" : "success"} border-0`;
       t.innerHTML = `<div class="d-flex"><div class="toast-body">${d.message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
-      document.querySelector('.toast-container')?.appendChild(t);
-      new bootstrap.Toast(t, {delay:4000}).show();
+      document.querySelector(".toast-container")?.appendChild(t);
+      new bootstrap.Toast(t, { delay: 4000 }).show();
     } catch (e) {
-      console.error('Toast parse error:', e);
+      console.error("Toast parse error:", e);
     }
   }
 }
+
+// Delete confirmation
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest(".delete-btn");
+  if (!btn) return;
+
+  e.preventDefault();
+  const id = btn.dataset.id;
+  const info = btn.dataset.info;
+
+  Swal.fire({
+    title: "ยืนยันการลบ?",
+    html: `<strong class="text-danger">${info}</strong><br>
+           <small class="text-muted">การลบจะปรับสต็อกอัตโนมัติ</small>`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#dc3545",
+    cancelButtonColor: "#6c757d",
+    confirmButtonText: '<i class="bi bi-trash-fill me-2"></i>ลบถาวร',
+    cancelButtonText: '<i class="bi bi-x-circle me-1"></i>ยกเลิก',
+    reverseButtons: true,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "history.php";
+
+      const csrf = document.createElement("input");
+      csrf.type = "hidden";
+      csrf.name = "csrf_token";
+      csrf.value = window.csrfToken || "";
+
+      const delInput = document.createElement("input");
+      delInput.type = "hidden";
+      delInput.name = "delete_id";
+      delInput.value = id;
+
+      form.appendChild(csrf);
+      form.appendChild(delInput);
+      document.body.appendChild(form);
+      form.submit();
+    }
+  });
+});

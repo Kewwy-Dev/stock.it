@@ -6,7 +6,7 @@ vendor/
 # composer.lock สามารถ commit ได้ถ้าต้องการให้ทีมใช้เวอร์ชันเดียวกัน
 
 # ไฟล์ที่ผู้ใช้ upload (เช่น รูปภาพสินค้า)
-uploads/
+uploads/*
 
 # log, cache, temp files
 *.log

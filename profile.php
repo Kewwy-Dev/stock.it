@@ -35,65 +35,74 @@ if (!$user || !is_array($user)) {
 $departments = $pdo->query("SELECT id, name FROM departments ORDER BY name")->fetchAll();
 
 // จัดการ POST
-$message = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-        $message = ['type' => 'danger', 'text' => 'Invalid CSRF token'];
+    header('Content-Type: application/json; charset=utf-8');
+
+    $response = ['success' => false, 'message' => 'Invalid request'];
+
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+        $response = ['success' => false, 'message' => 'Invalid CSRF token'];
     } else {
         $action = $_POST['action'] ?? '';
 
         if ($action === 'update_profile') {
-            $name = trim($_POST['name'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $dept_id = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
+            $name     = trim($_POST['name'] ?? '');
+            $email    = trim($_POST['email'] ?? '');
+            $dept_id  = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
 
             $profile_image = $user['profile_image'] ?? null;
+
+            // จัดการอัปโหลดรูป (เหมือนเดิม)
             if (!empty($_FILES['profile_image']['name'])) {
                 $ext = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
                 $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                if (in_array($ext, $allowed) && $_FILES['profile_image']['size'] <= 5 * 1024 * 1024) {
-                    $new_image = 'profile_' . $user_id . '_' . time() . '.' . $ext;
-                    $upload_path = 'uploads/' . $new_image;
-                    if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $upload_path)) {
-                        if ($profile_image && file_exists('uploads/' . $profile_image)) {
-                            unlink('uploads/' . $profile_image);
-                        }
-                        $profile_image = $new_image;
-                    } else {
-                        $message = ['type' => 'danger', 'text' => 'อัปโหลดรูปภาพล้มเหลว'];
+                if (!in_array($ext, $allowed) || $_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
+                    $response['message'] = 'รูปภาพไม่ถูกต้อง (jpg/png/gif/webp, ไม่เกิน 5MB)';
+                    echo json_encode($response);
+                    exit;
+                }
+
+                $new_image = 'profile_' . $user_id . '_' . time() . '.' . $ext;
+                $upload_path = 'uploads/' . $new_image;
+
+                if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $upload_path)) {
+                    if ($profile_image && file_exists('uploads/' . $profile_image)) {
+                        @unlink('uploads/' . $profile_image);
                     }
+                    $profile_image = $new_image;
                 } else {
-                    $message = ['type' => 'danger', 'text' => 'รูปภาพไม่ถูกต้อง (jpg/png/gif/webp, ไม่เกิน 2MB)'];
+                    $response['message'] = 'อัปโหลดรูปภาพล้มเหลว';
+                    echo json_encode($response);
+                    exit;
                 }
             }
 
-            if (!$message) {
-                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, department_id = ?, profile_image = ? WHERE id = ?");
-                $stmt->execute([$name, $email, $dept_id, $profile_image, $user_id]);
+            // อัปเดตฐานข้อมูล
+            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, department_id = ?, profile_image = ? WHERE id = ?");
+            $success = $stmt->execute([$name, $email, $dept_id, $profile_image, $user_id]);
 
-                $_SESSION['user_name'] = $name;
+            if ($success) {
+                $_SESSION['user_name']     = $name;
                 $_SESSION['profile_image'] = $profile_image;
-
-                $message = ['type' => 'success', 'text' => 'อัปเดตข้อมูลส่วนตัวเรียบร้อย'];
-
-                // เพิ่มรีเฟรชอัตโนมัติหลังสำเร็จ
-                echo '<script>
-                        setTimeout(function() {
-                            window.location.href = "profile.php";
-                        }, 1500); // รีเฟรชหลัง 1.5 วินาที
-                      </script>';
+                $response = [
+                    'success' => true,
+                    'message' => 'อัปเดตข้อมูลส่วนตัวเรียบร้อย'
+                ];
+            } else {
+                $response['message'] = 'ไม่สามารถอัปเดตข้อมูลได้';
             }
         } elseif ($action === 'change_password') {
-            $old_pass = $_POST['old_password'] ?? '';
-            $new_pass = $_POST['new_password'] ?? '';
+            // โค้ดเดิมของคุณ (ดีอยู่แล้ว แค่ปรับให้ส่ง $response เสมอ)
+            $old_pass    = $_POST['old_password'] ?? '';
+            $new_pass    = $_POST['new_password'] ?? '';
             $confirm_pass = $_POST['confirm_password'] ?? '';
 
             if (empty($old_pass) || empty($new_pass) || empty($confirm_pass)) {
-                $message = ['type' => 'danger', 'text' => 'กรุณากรอกข้อมูลให้ครบ'];
+                $response['message'] = 'กรุณากรอกข้อมูลให้ครบ';
             } elseif ($new_pass !== $confirm_pass) {
-                $message = ['type' => 'danger', 'text' => 'รหัสผ่านใหม่ไม่ตรงกัน'];
+                $response['message'] = 'รหัสผ่านใหม่ไม่ตรงกัน';
             } elseif (strlen($new_pass) < 6) {
-                $message = ['type' => 'danger', 'text' => 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'];
+                $response['message'] = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร';
             } else {
                 $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
                 $stmt->execute([$user_id]);
@@ -103,13 +112,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $hashed_new = password_hash($new_pass, PASSWORD_DEFAULT);
                     $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
                     $stmt->execute([$hashed_new, $user_id]);
-                    $message = ['type' => 'success', 'text' => 'เปลี่ยนรหัสผ่านเรียบร้อย'];
+
+                    $response = [
+                        'success' => true,
+                        'message' => 'เปลี่ยนรหัสผ่านเรียบร้อย'
+                    ];
                 } else {
-                    $message = ['type' => 'danger', 'text' => 'รหัสผ่านเก่าไม่ถูกต้อง'];
+                    $response['message'] = 'รหัสผ่านเก่าไม่ถูกต้อง';
                 }
             }
         }
     }
+
+    echo json_encode($response);
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -135,9 +151,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="card-body p-3 p-md-4">
-                <?php if ($message): ?>
-                    <div class="alert alert-<?= $message['type'] ?> alert-dismissible fade show" role="alert">
-                        <?= htmlspecialchars($message['text']) ?>
+                <?php if (isset($message) && $message): ?>
+                    <div class="alert alert-<?= $message['type'] ?? 'info' ?> alert-dismissible fade show" role="alert">
+                        <?= htmlspecialchars($message['text'] ?? 'ไม่ระบุข้อความ') ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
@@ -164,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p class="text-muted mb-3 text-center">@<?= htmlspecialchars($user['username'] ?? 'ไม่ระบุ') ?></p>
 
                             <!-- ฟอร์มอัปเดตข้อมูล (แก้ไข: ย้าย input file เข้ามาใน form) -->
-                            <form method="post" enctype="multipart/form-data" id="profileForm">
+                            <form enctype="multipart/form-data" id="profileForm">
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                 <input type="hidden" name="action" value="update_profile">
 
@@ -204,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="col-lg-7">
                         <div class="form-section">
                             <h5 class="mb-3 pb-2 border-bottom"><i class="bi bi-key me-1"></i>เปลี่ยนรหัสผ่าน</h5>
-                            <form method="post">
+                            <form id="changePasswordForm">
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                 <input type="hidden" name="action" value="change_password">
 
@@ -249,6 +265,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/profile.js"></script>
+    <!-- SweetAlert -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="assets/js/toast.js"></script>
 </body>
 
 </html>

@@ -8,12 +8,12 @@ require_once __DIR__ . '/config/db.php';
 session_start();
 
 if (empty($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
+  header('Location: login.php');
+  exit;
 }
 if ($_SESSION['user_role'] !== 'admin') {
-    header('Location: newuser.php');
-    exit;
+  header('Location: newuser.php');
+  exit;
 }
 
 if (empty($_SESSION['csrf_token'])) {
@@ -30,87 +30,165 @@ $employees   = $pdo->query("
     ORDER BY d.name, e.name
 ")->fetchAll();
 
-// จัดการแผนก
-if (isset($_POST['add_dept']) && !empty(trim($_POST['dept_name']))) {
-  if (hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-    $name = trim($_POST['dept_name']);
-    try {
-      $pdo->prepare("INSERT INTO departments (name) VALUES (?)")->execute([$name]);
-      $_SESSION['toast'] = ['type' => 'success', 'message' => "เพิ่มแผนก". " " .$name. " " ."เรียบร้อย"];
-    } catch (Exception $e) {
-      $_SESSION['toast'] = ['type' => 'error', 'message' => 'ชื่อแผนก'. " " .$name. " " .'ซ้ำ'];
-    }
-  }
-  header('Location: manage_employees.php');
-  exit;
-}
+// จัดการการลบ (POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
 
-if (isset($_GET['del_dept'])) {
-  $id = (int)$_GET['del_dept'];
-  $pdo->prepare("DELETE FROM departments WHERE id = ?")->execute([$id]);
-  $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบแผนกเรียบร้อย'];
-  header('Location: manage_employees.php');
-  exit;
-}
+  // Debug: บันทึกข้อมูลที่ได้รับ (ดูใน error_log หรือสร้างไฟล์ log ชั่วคราว)
+  error_log("DELETE REQUEST RECEIVED: " . print_r($_POST, true));
 
-// จัดการบริษัท
-if (isset($_POST['add_company']) && !empty(trim($_POST['company_name']))) {
-  if (hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-    $name = trim($_POST['company_name']);
-    try {
-      $pdo->prepare("INSERT INTO companies (name) VALUES (?)")->execute([$name]);
-      $_SESSION['toast'] = ['type' => 'success', 'message' => "เพิ่มบริษัท". " " .$name. " " ."เรียบร้อย"];
-    } catch (Exception $e) {
-      $_SESSION['toast'] = ['type' => 'error', 'message' => 'ชื่อบริษัท'. " " .$name. " " .'ซ้ำ'];
-    }
-  }
-  header('Location: manage_employees.php');
-  exit;
-}
-
-if (isset($_GET['del_company'])) {
-  $id = (int)$_GET['del_company'];
-  $pdo->prepare("DELETE FROM companies WHERE id = ?")->execute([$id]);
-  $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบบริษัทเรียบร้อย'];
-  header('Location: manage_employees.php');
-  exit;
-}
-
-// จัดการพนักงาน
-if ($_POST && isset($_POST['action'])) {
-  if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+  if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
+    error_log("CSRF INVALID");
   } else {
-    $name = trim($_POST['name']);
-    $dept = $_POST['department_id'] === '' ? null : (int)$_POST['department_id'];
-    if ($name === '') {
-      $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกชื่อ'];
+    $type = $_POST['delete_type'] ?? '';
+    $id   = (int)($_POST['delete_id'] ?? 0);
+
+    if ($id <= 0 || !in_array($type, ['dept', 'company', 'emp'])) {
+      $_SESSION['toast'] = ['type' => 'error', 'message' => 'ข้อมูลไม่ถูกต้อง'];
+      error_log("INVALID TYPE OR ID");
     } else {
       try {
-        if ($_POST['action'] === 'add') {
-          $pdo->prepare("INSERT INTO employees (name, department_id) VALUES (?,?)")
-            ->execute([$name, $dept]);
-          $_SESSION['toast'] = ['type' => 'success', 'message' => 'เพิ่มพนักงาน'. " " .$name. " " .'เรียบร้อย'];
-        } elseif ($_POST['action'] === 'edit' && !empty($_POST['id'])) {
-          $id = (int)$_POST['id'];
-          $pdo->prepare("UPDATE employees SET name=?, department_id=? WHERE id=?")
-            ->execute([$name, $dept, $id]);
-          $_SESSION['toast'] = ['type' => 'success', 'message' => 'แก้ไขพนักงาน'. " " .$name. " " .'เรียบร้อย'];
+        if ($type === 'dept') {
+          $stmt = $pdo->prepare("DELETE FROM departments WHERE id = ?");
+          $stmt->execute([$id]);
+          $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบแผนกเรียบร้อย'];
+        } elseif ($type === 'company') {
+          $stmt = $pdo->prepare("DELETE FROM companies WHERE id = ?");
+          $stmt->execute([$id]);
+          $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบบริษัทเรียบร้อย'];
+        } elseif ($type === 'emp') {
+          $stmt = $pdo->prepare("DELETE FROM employees WHERE id = ?");
+          $stmt->execute([$id]);
+          $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบพนักงานเรียบร้อย'];
         }
+        error_log("DELETE SUCCESS: $type ID $id");
       } catch (Exception $e) {
-        $_SESSION['toast'] = ['type' => 'error', 'message' => 'เกิดข้อผิดพลาด'];
+        $_SESSION['toast'] = ['type' => 'error', 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()];
+        error_log("DELETE ERROR: " . $e->getMessage());
       }
     }
   }
-  header('Location: manage_employees.php');
+
+  // สำคัญ! redirect กลับมาเพื่อ reload ข้อมูลใหม่
+  header("Location: manage_employees.php");
+  exit;
+}
+// จัดการเพิ่มแผนก
+if (isset($_POST['add_dept']) && trim($_POST['dept_name']) !== '') {
+  if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    $_SESSION['toast'] = [
+      'type' => 'error',
+      'message' => 'Invalid CSRF token (เพิ่มแผนก)'
+    ];
+  } else {
+    $name = trim($_POST['dept_name']);
+    try {
+      $stmt = $pdo->prepare("INSERT INTO departments (name) VALUES (?)");
+      $stmt->execute([$name]);
+      $_SESSION['toast'] = [
+        'type' => 'success',
+        'message' => "เพิ่มแผนก <strong>$name</strong> เรียบร้อย"
+      ];
+    } catch (PDOException $e) {
+      if ($e->getCode() == '23000') { // duplicate entry
+        $_SESSION['toast'] = [
+          'type' => 'error',
+          'message' => "ชื่อแผนก <strong>$name</strong> มีอยู่แล้ว"
+        ];
+      } else {
+        $_SESSION['toast'] = [
+          'type' => 'error',
+          'message' => "เกิดข้อผิดพลาดในการเพิ่มแผนก: " . $e->getMessage()
+        ];
+      }
+    }
+  }
+  header("Location: manage_employees.php");
   exit;
 }
 
-if (isset($_GET['delete_emp'])) {
-  $id = (int)$_GET['delete_emp'];
-  $pdo->prepare("DELETE FROM employees WHERE id=?")->execute([$id]);
-  $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบพนักงานเรียบร้อย'];
-  header('Location: manage_employees.php');
+// จัดการเพิ่มบริษัท
+if (isset($_POST['add_company']) && trim($_POST['company_name']) !== '') {
+  if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    $_SESSION['toast'] = [
+      'type' => 'error',
+      'message' => 'Invalid CSRF token (เพิ่มบริษัท)'
+    ];
+  } else {
+    $name = trim($_POST['company_name']);
+    try {
+      $stmt = $pdo->prepare("INSERT INTO companies (name) VALUES (?)");
+      $stmt->execute([$name]);
+      $_SESSION['toast'] = [
+        'type' => 'success',
+        'message' => "เพิ่มบริษัท <strong>$name</strong> เรียบร้อย"
+      ];
+    } catch (PDOException $e) {
+      if ($e->getCode() == '23000') { // duplicate entry
+        $_SESSION['toast'] = [
+          'type' => 'error',
+          'message' => "ชื่อบริษัท <strong>$name</strong> มีอยู่แล้ว"
+        ];
+      } else {
+        $_SESSION['toast'] = [
+          'type' => 'error',
+          'message' => "เกิดข้อผิดพลาดในการเพิ่มบริษัท: " . $e->getMessage()
+        ];
+      }
+    }
+  }
+  header("Location: manage_employees.php");
+  exit;
+}
+
+// จัดการเพิ่ม / แก้ไขพนักงาน (ปรับปรุงให้สมบูรณ์ขึ้น)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+  if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    $_SESSION['toast'] = [
+      'type' => 'error',
+      'message' => 'Invalid CSRF token (จัดการพนักงาน)'
+    ];
+  } else {
+    $name = trim($_POST['name'] ?? '');
+    $department_id = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
+
+    if ($name === '') {
+      $_SESSION['toast'] = [
+        'type' => 'error',
+        'message' => 'กรุณากรอกชื่อพนักงาน'
+      ];
+    } else {
+      try {
+        if ($_POST['action'] === 'add') {
+          $stmt = $pdo->prepare("INSERT INTO employees (name, department_id) VALUES (?, ?)");
+          $stmt->execute([$name, $department_id]);
+          $_SESSION['toast'] = [
+            'type' => 'success',
+            'message' => "เพิ่มพนักงาน <strong>$name</strong> เรียบร้อย"
+          ];
+        } elseif ($_POST['action'] === 'edit' && !empty($_POST['id'])) {
+          $id = (int)$_POST['id'];
+          $stmt = $pdo->prepare("UPDATE employees SET name = ?, department_id = ? WHERE id = ?");
+          $stmt->execute([$name, $department_id, $id]);
+          $_SESSION['toast'] = [
+            'type' => 'success',
+            'message' => "แก้ไขข้อมูลพนักงาน <strong>$name</strong> เรียบร้อย"
+          ];
+        } else {
+          $_SESSION['toast'] = [
+            'type' => 'error',
+            'message' => 'ไม่พบการกระทำที่ถูกต้อง'
+          ];
+        }
+      } catch (PDOException $e) {
+        $_SESSION['toast'] = [
+          'type' => 'error',
+          'message' => "เกิดข้อผิดพลาดในการจัดการพนักงาน: " . $e->getMessage()
+        ];
+      }
+    }
+  }
+  header("Location: manage_employees.php");
   exit;
 }
 ?>
@@ -132,7 +210,7 @@ if (isset($_GET['delete_emp'])) {
   <?php include 'navbar.php'; ?>
 
   <div class="container mt-4">
-    <h2 class="mb-4 text-center">จัดการข้อมูลองค์กร</h2>
+    <h2 class="mb-4 text-center"><i class="bi bi-person-gear me-1"></i>จัดการข้อมูลองค์กร</h2>
     <!-- แผนก -->
     <div class="row">
       <div class="col-lg-4">
@@ -141,17 +219,21 @@ if (isset($_GET['delete_emp'])) {
             <h5 class="mb-0 text-center"><i class="bi bi-gear-fill me-1"></i>รายชื่อแผนกทั้งหมด</h5>
           </div>
           <div class="card-body">
-            <form method="post" class="input-group mb-3">
+            <form method="post" action="manage_employees.php" class="input-group mb-3">
               <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
               <input type="text" name="dept_name" class="form-control" placeholder="ชื่อแผนก" required>
-              <button type="submit" name="add_dept" class="btn btn-primary"><i class="bi bi-send-plus"></i></button>
+              <button type="submit" name="add_dept" class="btn btn-primary">
+                <i class="bi bi-send-plus"></i>
+              </button>
             </form>
             <div class="list-group scrollable-list">
               <?php foreach ($departments as $d): ?>
                 <div class="list-group-item">
                   <span><?= htmlspecialchars($d['name']) ?></span>
-                  <button type="button" class="btn btn-sm btn-outline-danger"
-                    onclick='openDelete("dept", <?= $d['id'] ?>, "<?= addslashes(htmlspecialchars($d['name'])) ?>")'>
+                  <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+                    data-type="dept"
+                    data-id="<?= $d['id'] ?>"
+                    data-name="<?= addslashes(htmlspecialchars($d['name'])) ?>">
                     <i class="bi bi-trash"></i>
                   </button>
                 </div>
@@ -167,17 +249,21 @@ if (isset($_GET['delete_emp'])) {
             <h5 class="mb-0 text-center"><i class="bi bi-building-fill me-1"></i>รายชื่อบริษัท</h5>
           </div>
           <div class="card-body">
-            <form method="post" class="input-group mb-3">
+            <form method="post" action="manage_employees.php" class="input-group mb-3">
               <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
               <input type="text" name="company_name" class="form-control" placeholder="ชื่อบริษัท" required>
-              <button type="submit" name="add_company" class="btn btn-info text-white"><i class="bi bi-send-plus"></i></button>
+              <button type="submit" name="add_company" class="btn btn-info text-white">
+                <i class="bi bi-send-plus"></i>
+              </button>
             </form>
             <div class="list-group scrollable-list">
               <?php foreach ($companies as $c): ?>
                 <div class="list-group-item">
                   <span><?= htmlspecialchars($c['name']) ?></span>
-                  <button type="button" class="btn btn-sm btn-outline-danger"
-                    onclick='openDelete("company", <?= $c['id'] ?>, "<?= addslashes(htmlspecialchars($c['name'])) ?>")'>
+                  <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+                    data-type="company"
+                    data-id="<?= $c['id'] ?>"
+                    data-name="<?= addslashes(htmlspecialchars($c['name'])) ?>">
                     <i class="bi bi-trash"></i>
                   </button>
                 </div>
@@ -208,8 +294,10 @@ if (isset($_GET['delete_emp'])) {
                       onclick='openEdit(<?= $e['id'] ?>,"<?= addslashes(htmlspecialchars($e['name'])) ?>",<?= $e['department_id'] ?: 'null' ?>)'>
                       <i class="bi bi-pencil-square me-1"></i>แก้ไข
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger"
-                      onclick='openDelete("emp", <?= $e['id'] ?>, "<?= addslashes(htmlspecialchars($e['name'])) ?>")'>
+                    <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+                      data-type="emp"
+                      data-id="<?= $e['id'] ?>"
+                      data-name="<?= addslashes(htmlspecialchars($e['name'])) ?>">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -229,7 +317,7 @@ if (isset($_GET['delete_emp'])) {
           <h5 class="modal-title" id="empTitle">เพิ่มพนักงาน</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <form method="post">
+        <form method="post" action="manage_employees.php">
           <div class="modal-body">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" name="action" id="empAction" value="add">
@@ -257,37 +345,14 @@ if (isset($_GET['delete_emp'])) {
     </div>
   </div>
 
-  <!-- Modal ลบ (ใช้ร่วมกันทุกอย่าง: พนักงาน, แผนก, บริษัท) -->
-  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title" id="deleteModalLabel">
-            <i class="bi bi-exclamation-triangle-fill"></i> ยืนยันการลบ
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-2">คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?</p>
-          <strong id="deleteItemType" class="text-primary"></strong>
-          <strong id="deleteItemName" class="text-danger mt-1"></strong>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-          <a href="#" id="confirmDeleteBtn" class="btn btn-danger">
-            <i class="bi bi-trash"></i> ยืนยัน
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast-container position-fixed top-0 end-0 p-3"></div>
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
   <script src="assets/js/manage_employees.js"></script>
+  <script>
+    window.csrfToken = "<?= $_SESSION['csrf_token'] ?>";
+  </script>
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="assets/js/toast.js"></script>
 </body>
 
 </html>

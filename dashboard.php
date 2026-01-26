@@ -168,7 +168,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
         </div>
       </a>
 
-      <a href="index.php" class="stat-card-link">
+      <a href="index.php?filter=low" class="stat-card-link">
         <div class="stat-card warning">
           <div class="stat-icon text-warning"><i class="bi bi-exclamation-triangle-fill"></i></div>
           <div class="stat-number"><?= number_format($low_stock) ?></div>
@@ -176,7 +176,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
         </div>
       </a>
 
-      <a href="index.php" class="stat-card-link">
+      <a href="index.php?filter=zero" class="stat-card-link">
         <div class="stat-card danger">
           <div class="stat-icon text-danger"><i class="bi bi-slash-circle-fill"></i></div>
           <div class="stat-number"><?= number_format($out_of_stock) ?></div>
@@ -305,6 +305,9 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <!-- โหลดไฟล์ JS ของเรา (สำคัญ: ต้องอยู่หลังตัวแปร window) -->
   <script src="assets/js/dashboard.js" defer></script>
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="assets/js/toast.js"></script>
 </body>
 
 </html>

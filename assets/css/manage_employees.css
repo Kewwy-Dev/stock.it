@@ -24,7 +24,7 @@
 
     /* --- NEW: เพิ่มส่วนนี้เพื่อให้ List Group เลื่อนได้ --- */
     .scrollable-list {
-      max-height: 200px;
+      max-height: 390px;
       /* กำหนดความสูงสูงสุด (ปรับค่าได้ตามต้องการ) */
       overflow-y: auto;
       /* เพิ่ม scrollbar อัตโนมัติเมื่อข้อมูลล้น */

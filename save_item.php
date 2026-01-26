@@ -7,96 +7,141 @@ require_once __DIR__ . '/config/db.php';
 
 session_start();
 
-if (empty($_SESSION['user_id'])) {
-    header('Location: login.php');
+// ฟังก์ชันช่วยส่ง JSON และออก
+function sendJson($data)
+{
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }
-if ($_SESSION['user_role'] !== 'admin') {
-    header('Location: newuser.php');
-    exit;
+
+// Security checks
+if (empty($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
+    sendJson(['success' => false, 'error' => 'สิทธิ์ไม่เพียงพอ']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php'); exit;
+    sendJson(['success' => false, 'error' => 'Method Not Allowed']);
 }
 
-if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-    $_SESSION['toast'] = ['type'=>'error','message'=>'Invalid CSRF token'];
-    header('Location: index.php'); exit;
+if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+    sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
 }
 
-$name  = trim($_POST['name'] ?? '');
-$stock = (int)($_POST['stock'] ?? 0);
-$image = $_POST['old_image'] ?? '';
+// Sanitize & validate input
+$name        = trim($_POST['name'] ?? '');
+$stock       = (int)($_POST['stock'] ?? 0);
+$category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+$image       = $_POST['old_image'] ?? '';
+$is_update   = !empty($_POST['id']);
+$id          = $is_update ? (int)$_POST['id'] : null;
 
-// ตรวจสอบชื่อ
 if ($name === '') {
-    $_SESSION['toast'] = ['type'=>'error','message'=>'กรุณากรอกชื่ออุปกรณ์'];
-    header('Location: index.php'); exit;
+    sendJson(['success' => false, 'error' => 'กรุณากรอกชื่ออุปกรณ์']);
 }
 
-// อัปโหลดรูปภาพ
+// Handle image upload
 if (!empty($_FILES['image']['name'])) {
     $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
-    $allow = ['jpg','jpeg','png','gif','webp'];
-    if (in_array($ext, $allow) && $_FILES['image']['size'] <= 5*1024*1024) {
-        $image = time() . '_' . rand(1000,9999) . '.' . $ext;
-        if (!is_dir('uploads')) mkdir('uploads', 0755, true);
-        move_uploaded_file($_FILES['image']['tmp_name'], "uploads/$image");
-        
-        // ลบรูปเก่า
-        if (!empty($_POST['old_image']) && file_exists("uploads/{$_POST['old_image']}")) {
-            unlink("uploads/{$_POST['old_image']}");
-        }
-    } else {
-        $_SESSION['toast'] = ['type'=>'error','message'=>'รูปไม่ถูกต้อง (เฉพาะ jpg/png/gif/webp และไม่เกิน 2MB)'];
-        header('Location: index.php'); exit;
+    $allow = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    if (!in_array($ext, $allow) || $_FILES['image']['size'] > 5 * 1024 * 1024) {
+        sendJson(['success' => false, 'error' => 'รูปไม่ถูกต้อง (jpg/png/gif/webp, ไม่เกิน 5MB)']);
+    }
+
+    $image = time() . '_' . rand(1000, 9999) . '.' . $ext;
+    if (!is_dir('uploads')) mkdir('uploads', 0755, true);
+
+    if (!move_uploaded_file($_FILES['image']['tmp_name'], "uploads/$image")) {
+        sendJson(['success' => false, 'error' => 'อัปโหลดรูปภาพไม่สำเร็จ']);
+    }
+
+    // ลบรูปเก่า
+    if (!empty($_POST['old_image']) && file_exists("uploads/{$_POST['old_image']}")) {
+        @unlink("uploads/{$_POST['old_image']}");
     }
 }
 
 $pdo->beginTransaction();
+
 try {
-    if (!empty($_POST['id'])) {
-        // แก้ไข
-        $id = (int)$_POST['id'];
-        $old = $pdo->prepare("SELECT stock FROM items WHERE id = ?")->execute([$id]);
-        $old = $pdo->query("SELECT stock FROM items WHERE id = $id")->fetchColumn();
+    if ($is_update) {
+        // ────────────── แก้ไข ──────────────
+        $stmt = $pdo->prepare("SELECT stock FROM items WHERE id = ?");
+        $stmt->execute([$id]);
+        $old_stock = $stmt->fetchColumn();
 
-        $pdo->prepare("UPDATE items SET name = ?, image = ?, stock = ? WHERE id = ?")
-            ->execute([$name, $image ?: null, $stock, $id]);
-
-        // ถ้าจำนวนเปลี่ยน → บันทึก transaction
-        if ($stock != $old) {
-            $diff = $stock - $old;
-            $type = $diff > 0 ? 'IN' : 'OUT';
-            $qty  = abs($diff);
-            $pdo->prepare("INSERT INTO stock_transactions (item_id, type, quantity, stock, transaction_date, memo) 
-                           VALUES (?, ?, ?, ?, CURDATE(), 'ปรับสต็อกด้วยมือ')")
-                ->execute([$id, $type, $qty, $stock]);
+        if ($old_stock === false) {
+            throw new Exception("ไม่พบอุปกรณ์ ID $id");
         }
 
-        $msg = "แก้ไข '$name' เรียบร้อย";
+        $stmt = $pdo->prepare("
+            UPDATE items 
+            SET name = ?, category_id = ?, image = ?, stock = ? 
+            WHERE id = ?
+        ");
+        $stmt->execute([$name, $category_id, $image ?: null, $stock, $id]);
+
+        // บันทึก transaction ถ้า stock เปลี่ยน
+        if ($stock != $old_stock) {
+            $diff = $stock - $old_stock;
+            $type = $diff > 0 ? 'IN' : 'OUT';
+            $qty  = abs($diff);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO stock_transactions 
+                (item_id, type, quantity, stock, transaction_date, memo) 
+                VALUES (?, ?, ?, ?, CURDATE(), 'ปรับสต็อกด้วยมือ')
+            ");
+            $stmt->execute([$id, $type, $qty, $stock]);
+        }
+
+        $message = "แก้ไข '$name' เรียบร้อย";
     } else {
-        // เพิ่มใหม่
-        $pdo->prepare("INSERT INTO items (name, image, stock) VALUES (?, ?, ?)")
-            ->execute([$name, $image ?: null, $stock]);
+        // ────────────── เพิ่มใหม่ ──────────────
+        $stmt = $pdo->prepare("
+            INSERT INTO items (name, category_id, image, stock) 
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->execute([$name, $category_id, $image ?: null, $stock]);
 
         $id = $pdo->lastInsertId();
 
         if ($stock > 0) {
-            $pdo->prepare("INSERT INTO stock_transactions (item_id, type, quantity, stock, transaction_date, memo) 
-                           VALUES (?, 'IN', ?, ?, CURDATE(), 'รับเข้าครั้งแรก')")
-                ->execute([$id, $stock, $stock]);
+            $stmt = $pdo->prepare("
+                INSERT INTO stock_transactions 
+                (item_id, type, quantity, stock, transaction_date, memo) 
+                VALUES (?, 'IN', ?, ?, CURDATE(), 'รับเข้าครั้งแรก')
+            ");
+            $stmt->execute([$id, $stock, $stock]);
         }
-        $msg = "เพิ่ม '$name' เรียบร้อย";
+
+        $message = "เพิ่ม '$name' เรียบร้อย";
     }
+
     $pdo->commit();
-    $_SESSION['toast'] = ['type'=>'success','message'=>$msg];
+
+    // ส่ง JSON สำหรับ AJAX
+    sendJson([
+        'success'   => true,
+        'is_update' => false,          // เพิ่มบรรทัดนี้
+        'id'        => $id,
+        'item_name' => $name,
+        'message'   => $message
+    ]);
+
+    // ในกรณีแก้ไข
+    sendJson([
+        'success'   => true,
+        'is_update' => true,           // เพิ่มบรรทัดนี้
+        'id'        => $id,
+        'item_name' => $name,
+        'message'   => $message
+    ]);
 } catch (Exception $e) {
     $pdo->rollBack();
-    $_SESSION['toast'] = ['type'=>'error','message'=>'เกิดข้อผิดพลาด: '.$e->getMessage()];
+    sendJson([
+        'success' => false,
+        'error'   => $e->getMessage() ?: 'เกิดข้อผิดพลาดในการบันทึก'
+    ]);
 }
-
-header('Location: index.php');
-exit;
-?>

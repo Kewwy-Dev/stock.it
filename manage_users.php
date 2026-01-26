@@ -32,6 +32,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id']) && isset($
   exit;
 }
 
+// จัดการสร้างผู้ใช้ใหม่
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_user') {
+  $username = trim($_POST['username'] ?? '');
+  $name     = trim($_POST['name'] ?? '');
+  $email    = trim($_POST['email'] ?? '');
+  $password = $_POST['password'] ?? '';
+  $dept_id  = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
+
+  // ตรวจสอบข้อมูล
+  if (empty($username) || empty($name) || empty($email) || empty($password)) {
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกข้อมูลให้ครบทุกช่อง'];
+  } elseif (strlen($password) < 6) {
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'];
+  } else {
+    // ตรวจสอบว่า username ซ้ำหรือไม่
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    if ($stmt->fetch()) {
+      $_SESSION['toast'] = ['type' => 'error', 'message' => 'ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว'];
+    } else {
+      $hashed = password_hash($password, PASSWORD_DEFAULT);
+      $stmt = $pdo->prepare("
+                INSERT INTO users (username, name, email, password, role, department_id, created_at)
+                VALUES (?, ?, ?, ?, 'user', ?, NOW())
+            ");
+      $stmt->execute([$username, $name, $email, $hashed, $dept_id]);
+
+      $_SESSION['toast'] = ['type' => 'success', 'message' => 'สร้างผู้ใช้ใหม่เรียบร้อย'];
+    }
+  }
+  header('Location: manage_users.php');
+  exit;
+}
+
 // จัดการลบผู้ใช้
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
   $deleteId = (int)$_GET['delete'];
@@ -109,28 +143,13 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
 <body>
   <?php include 'navbar.php'; ?>
 
-  <!-- Toast Notification -->
-  <?php if (isset($_SESSION['toast'])): ?>
-    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080;">
-      <div class="toast align-items-center text-white bg-<?= $_SESSION['toast']['type'] === 'success' ? 'success' : 'danger' ?> border-0"
-        role="alert" aria-live="assertive" aria-atomic="true"
-        data-bs-autohide="true" data-bs-delay="1500">
-        <div class="d-flex">
-          <div class="toast-body">
-            <?= htmlspecialchars($_SESSION['toast']['message']) ?>
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
-    </div>
-    
-    <?php unset($_SESSION['toast']); ?>
-  <?php endif; ?>
-
   <div class="container manage-card">
     <div class="card shadow">
-      <div class="card-header bg-primary text-white text-center py-2">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
         <h4 class="mb-0"><i class="bi bi-person-fill-gear me-2"></i>จัดการผู้ใช้</h4>
+        <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#createUserModal">
+          <i class="bi bi-person-plus me-1"></i> สร้างผู้ใช้ใหม่
+        </button>
       </div>
 
       <div class="card-body p-4">
@@ -179,8 +198,10 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
                       <i class="bi bi-pencil-square fs-5"></i>
                     </button>
                     <?php if ($row['id'] != $_SESSION['user_id']): ?>
-                      <button type="button" class="btn btn-link p-0 btn-delete" data-bs-toggle="modal" data-bs-target="#deleteModal<?= $row['id'] ?>">
-                        <i class="bi bi-trash fs-5"></i>
+                      <button type="button" class="btn btn-link p-0 btn-delete"
+                        data-username="<?= htmlspecialchars($row['username']) ?>"
+                        data-delete-url="manage_users.php?delete=<?= $row['id'] ?>">
+                        <i class="bi bi-trash fs-5 text-danger"></i>
                       </button>
                     <?php endif; ?>
 
@@ -232,25 +253,81 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
                       </div>
                     </div>
 
-                    <!-- Modal ลบ -->
-                    <div class="modal fade" id="deleteModal<?= $row['id'] ?>" tabindex="-1">
-                      <div class="modal-dialog modal-sm">
+                    <!-- Modal สร้างผู้ใช้ใหม่ -->
+                    <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+                      <div class="modal-dialog modal-lg">
                         <div class="modal-content">
-                          <div class="modal-header">
-                            <h5 class="modal-title text-danger">ยืนยันการลบ</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                          <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title" id="createUserModalLabel">
+                              <i class="bi bi-person-plus-fill me-2"></i>สร้างผู้ใช้ใหม่
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
-                          <div class="modal-body text-center">
-                            <p>ลบผู้ใช้ <strong><?= htmlspecialchars($row['username']) ?></strong> ?</p>
-                            <p class="text-muted small">การกระทำนี้ไม่สามารถกู้คืนได้</p>
-                          </div>
-                          <div class="modal-footer justify-content-center">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                            <a href="manage_users.php?delete=<?= $row['id'] ?>" class="btn btn-danger"><i class="bi bi-trash3 me-1"></i>ยืนยัน</a>
-                          </div>
+                          <form method="post">
+                            <div class="modal-body p-4">
+                              <input type="hidden" name="action" value="create_user">
+
+                              <div class="row g-3">
+
+                                <div class="col-md-12">
+                                  <label class="form-label">ชื่อผู้ใช้ <span class="text-danger">*</span></label>
+                                  <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                    <input type="text" name="username" class="form-control" required placeholder="ใช้สำหรับล็อกอิน" autocomplete="off">
+                                  </div>
+                                </div>
+
+                                <div class="col-md-12">
+                                  <label class="form-label">รหัสผ่าน <span class="text-danger">*</span></label>
+                                  <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                    <input type="password" name="password" class="form-control" required minlength="6">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                      <i class="bi bi-eye-slash"></i>
+                                    </button>
+                                  </div>
+                                  <div class="form-text text-muted">ต้องมีอย่างน้อย 6 ตัวอักษร</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                  <label class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+                                  <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                                    <input type="text" name="name" class="form-control" required>
+                                  </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                  <label class="form-label">อีเมล <span class="text-danger">*</span></label>
+                                  <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" name="email" class="form-control" required>
+                                  </div>
+                                </div>
+
+                                <div class="col-12">
+                                  <label class="form-label">แผนก (ไม่บังคับ)</label>
+                                  <select name="department_id" class="form-select">
+                                    <option value="">— ไม่ระบุแผนก —</option>
+                                    <?php foreach ($departments as $d): ?>
+                                      <option value="<?= $d['id'] ?>"><?= htmlspecialchars($d['name']) ?></option>
+                                    <?php endforeach; ?>
+                                  </select>
+                                </div>
+
+                              </div>
+                            </div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                              <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-person-plus me-1"></i> สร้างผู้ใช้
+                              </button>
+                            </div>
+                          </form>
                         </div>
                       </div>
                     </div>
+
                   </td>
                 </tr>
               <?php endforeach; ?>
@@ -265,9 +342,19 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
       </div>
     </div>
   </div>
-
+  <?php if (isset($_SESSION['toast'])): ?>
+    <div id="toast-data"
+      data-type="<?= $_SESSION['toast']['type'] ?>"
+      data-message="<?= htmlspecialchars(addslashes($_SESSION['toast']['message'])) ?>"
+      style="display: none;"></div>
+    <?php unset($_SESSION['toast']); ?>
+  <?php endif; ?>
+  
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/manage_users.js"></script>
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="assets/js/toast.js"></script>
 </body>
 
 </html>
