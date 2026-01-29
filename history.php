@@ -15,9 +15,25 @@ if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-/* ---------- ลบรายการพร้อมปรับสต็อก ---------- */
+
+function sendJson($data)
+{
+  header('Content-Type: application/json; charset=utf-8');
+  echo json_encode($data, JSON_UNESCAPED_UNICODE);
+  exit;
+}
+
+$isAjax = (
+  (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
+  (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+);
+
+/* ---------- ?????????????????????? ---------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
   if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    if ($isAjax) {
+      sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
+    }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
   } else {
     $tid = (int)$_POST['delete_id'];
@@ -33,18 +49,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
           ->execute([$change, $tr['item_id']]);
         $pdo->prepare("DELETE FROM stock_transactions WHERE id = ?")->execute([$tid]);
         $pdo->commit();
-        $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบรายการและปรับสต็อกเรียบร้อย'];
+        if ($isAjax) {
+          sendJson(['success' => true, 'id' => $tid]);
+        }
+        $_SESSION['toast'] = ['type' => 'success', 'message' => '?????????????????????????????'];
       } else {
         $pdo->rollBack();
-        $_SESSION['toast'] = ['type' => 'error', 'message' => 'ไม่พบรายการ'];
+        if ($isAjax) {
+          sendJson(['success' => false, 'error' => '???????????']);
+        }
+        $_SESSION['toast'] = ['type' => 'error', 'message' => '???????????'];
       }
     } catch (Exception $e) {
       $pdo->rollBack();
+      if ($isAjax) {
+        sendJson(['success' => false, 'error' => 'Error: ' . $e->getMessage()]);
+      }
       $_SESSION['toast'] = ['type' => 'error', 'message' => 'Error: ' . $e->getMessage()];
     }
   }
-  header('Location: history.php');
-  exit;
+  if (!$isAjax) {
+    header('Location: history.php');
+    exit;
+  }
 }
 
 /* ---------- ดึงข้อมูลทั้งหมด ---------- */
@@ -79,20 +106,21 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ประวัติการใช้งาน - Stock-IT</title>
+  <title>Stock-IT • ประวัติการใช้งาน</title>
+  <link rel="icon" type="image/png" href="uploads/Stock-IT.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
-  <link rel="stylesheet" href="assets/css/history.css">
+  <link rel="stylesheet" href="<?= asset_url('assets/css/history.css') ?>">
 </head>
 
 <body class="bg-light">
   <?php include 'navbar.php'; ?>
 
   <div class="container mt-4">
-    <h2 class="mb-4 text-center">
+    <h2 class="mb-4 text-center text-primary">
       <i class="bi bi-clock-history me-2"></i>ประวัติการเบิก-รับเข้าอุปกรณ์
     </h2>
 
@@ -118,12 +146,12 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="categoryDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-grid-3x3-gap-fill text-primary fs-5"></i>
-                <span id="categoryLabel" class="text-truncate">— หมวดหมู่สินค้า —</span>
+                <span id="categoryLabel" class="text-truncate">—  —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end w-100 shadow" aria-labelledby="categoryDropdown" style="max-height: 320px; overflow-y: auto;">
-              <li><a class="dropdown-item" href="#" data-value="">— หมวดหมู่สินค้า —</a></li>
+              <li><a class="dropdown-item" href="#" data-value="">— ทุกหมวดหมู่ —</a></li>
               <?php foreach ($categories as $ct): ?>
                 <li><a class="dropdown-item" href="#" data-value="<?= $ct['id'] ?>"><?= htmlspecialchars($ct['name']) ?></a></li>
               <?php endforeach; ?>
@@ -144,12 +172,12 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="itemDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-search text-primary fs-5"></i>
-                <span id="itemLabel" class="text-truncate">— ค้นหาอุปกรณ์ —</span>
+                <span id="itemLabel" class="text-truncate">— —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end w-100 shadow" aria-labelledby="itemDropdown" style="max-height: 320px; overflow-y: auto;">
-              <li><a class="dropdown-item" href="#" data-value="">— ค้นหาอุปกรณ์ —</a></li>
+              <li><a class="dropdown-item" href="#" data-value="">— ค้นหาทุกอุปกรณ์ —</a></li>
               <?php foreach ($items as $item): ?>
                 <li><a class="dropdown-item" href="#" data-value="<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></a></li>
               <?php endforeach; ?>
@@ -170,7 +198,7 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="typeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-arrow-left-right text-primary fs-5"></i>
-                <span id="typeLabel" class="text-truncate">— ทุกประเภท —</span>
+                <span id="typeLabel" class="text-truncate">— —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
@@ -195,7 +223,7 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="companyDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-building text-primary fs-5"></i>
-                <span id="companyLabel" class="text-truncate">— ทุกบริษัท —</span>
+                <span id="companyLabel" class="text-truncate">— —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
@@ -242,6 +270,7 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               <tr>
                 <th class="border-top-0">วันที่</th>
                 <th class="border-top-0">อุปกรณ์</th>
+                <th class="border-top-0 text-center">ประเภท</th>
                 <th class="border-top-0 text-center">จำนวน</th>
                 <th class="border-top-0 text-center">คงเหลือ</th>
                 <th class="border-top-0">ผู้เบิก/แผนก</th>
@@ -290,10 +319,10 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
   </script>
 
   <!-- โหลด JS แยก -->
-  <script src="assets/js/history.js" defer></script>
+  <script src="<?= asset_url('assets/js/history.js') ?>" defer></script>
   <!-- SweetAlert -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="assets/js/toast.js"></script>
+  <script src="<?= asset_url('assets/js/toast.js') ?>"></script>
 </body>
 
 </html>

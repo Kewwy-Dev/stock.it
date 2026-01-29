@@ -21,8 +21,8 @@ $range_labels = [
   'today' => 'วันนี้',
   'week'  => 'สัปดาห์นี้',
   'month' => 'เดือนนี้',
-  'year'  => 'ปีนี้',
-  'all'   => 'ทั้งหมด'
+  // 'year'  => 'ปีนี้',
+  // 'all'   => 'ทั้งหมด'
 ];
 
 $date_from = null;
@@ -124,6 +124,156 @@ foreach ($stock_by_dept as $dept) {
 $json_labels = json_encode($chart_labels, JSON_UNESCAPED_UNICODE);
 $json_data   = json_encode($chart_data);
 $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
+
+if (isset($_GET['ajax'])) {
+  // Duplicate logic สำหรับ AJAX: คำนวณเฉพาะส่วนที่เปลี่ยนตาม range
+  $ajax_range = $_GET['range'] ?? 'month';
+  if (!in_array($ajax_range, $allowed_ranges, true)) {
+    $ajax_range = 'month';
+  }
+
+  $ajax_date_from = null;
+  $ajax_date_to = null;
+  $ajax_today = new DateTime('today');
+
+  switch ($ajax_range) {
+    case 'today':
+      $ajax_date_from = $ajax_today->format('Y-m-d');
+      $ajax_date_to = $ajax_today->format('Y-m-d');
+      break;
+    case 'week':
+      $ajax_date_from = (new DateTime('monday this week'))->format('Y-m-d');
+      $ajax_date_to = (new DateTime('sunday this week'))->format('Y-m-d');
+      break;
+    case 'month':
+      $ajax_date_from = (new DateTime('first day of this month'))->format('Y-m-d');
+      $ajax_date_to = (new DateTime('last day of this month'))->format('Y-m-d');
+      break;
+    case 'year':
+      $ajax_date_from = (new DateTime('first day of january this year'))->format('Y-m-d');
+      $ajax_date_to = (new DateTime('last day of december this year'))->format('Y-m-d');
+      break;
+    case 'all':
+    default:
+      $ajax_date_from = null;
+      $ajax_date_to = null;
+      break;
+  }
+
+  $ajax_date_filter_sql = '';
+  $ajax_date_params = [];
+  if ($ajax_date_from && $ajax_date_to) {
+    $ajax_date_filter_sql = " AND t.transaction_date >= :date_from AND t.transaction_date <= :date_to";
+    $ajax_date_params = [':date_from' => $ajax_date_from, ':date_to' => $ajax_date_to];
+  }
+
+  // Recent transactions สำหรับ AJAX
+  $ajax_recent_stmt = $pdo->prepare("
+      SELECT t.id, t.type, t.quantity, t.transaction_date, i.name AS item_name,
+             e.name AS emp_name, c.name AS company_name
+      FROM stock_transactions t
+      LEFT JOIN items i ON t.item_id = i.id
+      LEFT JOIN employees e ON t.employee_id = e.id
+      LEFT JOIN companies c ON t.company_id = c.id
+      WHERE 1=1 $ajax_date_filter_sql
+      ORDER BY t.created_at DESC LIMIT 20
+  ");
+  $ajax_recent_stmt->execute($ajax_date_params);
+  $ajax_recent_trans = $ajax_recent_stmt->fetchAll();
+
+  // Generate HTML สำหรับ transaction table (เพื่ออัปเดตใน JS)
+  ob_start();
+  if (empty($ajax_recent_trans)) {
+    echo '<div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox opacity-50" style="font-size: 3rem;"></i>
+            <p class="mt-3">ยังไม่มีธุรกรรมในช่วงเวลานี้</p>
+          </div>';
+  } else {
+    echo '<table class="table transaction-table mb-0">
+            <thead>
+              <tr>
+                <th class="col-type">ประเภท</th>
+                <th class="col-item">รายการ</th>
+                <th class="col-quantity">จำนวน</th>
+                <th class="col-date">วันที่</th>
+              </tr>
+            </thead>
+            <tbody>';
+    foreach ($ajax_recent_trans as $trans) {
+      echo '<tr>
+              <td class="col-type">
+                <span class="badge ' . ($trans['type'] === 'IN' ? 'badge-in' : 'badge-out') . '">
+                  ' . ($trans['type'] === 'IN' ? 'รับเข้า' : 'เบิกออก') . '
+                </span>
+              </td>
+              <td class="col-item">
+                <div><strong>' . htmlspecialchars($trans['item_name']) . '</strong></div>
+                <small class="text-muted">
+                  ' . ($trans['emp_name'] ? 'โดย ' . htmlspecialchars($trans['emp_name']) : ($trans['company_name'] ? 'บริษัท ' . htmlspecialchars($trans['company_name']) : 'ปรับสต็อก')) . '
+                </small>
+              </td>
+              <td class="col-quantity">
+                <span class="' . ($trans['type'] === 'IN' ? 'quantity-in' : 'quantity-out') . '">
+                  ' . ($trans['type'] === 'IN' ? '+' : '-') . number_format($trans['quantity']) . '
+                </span>
+              </td>
+              <td class="col-date text-muted">
+                ' . date('d/m/Y', strtotime($trans['transaction_date'])) . '
+              </td>
+            </tr>';
+    }
+    echo '</tbody></table>';
+  }
+  $ajax_recent_html = ob_get_clean();
+
+  // Chart data สำหรับ AJAX
+  $ajax_stock_by_dept_stmt = $pdo->prepare("
+      SELECT d.name AS dept_name, COALESCE(SUM(t.quantity), 0) AS total_out
+      FROM departments d
+      LEFT JOIN employees e ON e.department_id = d.id
+      LEFT JOIN stock_transactions t ON t.employee_id = e.id AND t.type = 'OUT' $ajax_date_filter_sql
+      GROUP BY d.id, d.name
+      ORDER BY total_out DESC
+  ");
+  $ajax_stock_by_dept_stmt->execute($ajax_date_params);
+  $ajax_stock_by_dept = $ajax_stock_by_dept_stmt->fetchAll();
+
+  $ajax_chart_labels = array_column($ajax_stock_by_dept, 'dept_name');
+  $ajax_chart_data   = array_column($ajax_stock_by_dept, 'total_out');
+
+  // Dept details สำหรับ AJAX
+  $ajax_detail_stmt = $pdo->prepare("
+      SELECT 
+          i.name AS item_name,
+          SUM(t.quantity) AS qty
+      FROM departments d
+      LEFT JOIN employees e ON e.department_id = d.id
+      LEFT JOIN stock_transactions t ON t.employee_id = e.id AND t.type = 'OUT' $ajax_date_filter_sql
+      LEFT JOIN items i ON t.item_id = i.id
+      WHERE d.name = :dept_name AND t.quantity IS NOT NULL
+      GROUP BY i.name
+      ORDER BY qty DESC
+      LIMIT 10
+  ");
+
+  $ajax_dept_details = [];
+  foreach ($ajax_stock_by_dept as $dept) {
+    $ajax_detail_stmt->execute(array_merge($ajax_date_params, [':dept_name' => $dept['dept_name']]));
+    $items = $ajax_detail_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $ajax_dept_details[$dept['dept_name']] = $items;
+  }
+
+  // Return JSON
+  header('Content-Type: application/json');
+  echo json_encode([
+    'range_label' => $range_labels[$ajax_range],
+    'recent_html' => $ajax_recent_html,
+    'chart_labels' => $ajax_chart_labels,
+    'chart_data' => $ajax_chart_data,
+    'dept_details' => $ajax_dept_details
+  ], JSON_UNESCAPED_UNICODE);
+  exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -131,27 +281,28 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>แดชบอร์ด - Stock-IT</title>
+  <title>Stock-IT • แดชบอร์ด</title>
+  <link rel="icon" type="image/png" href="uploads/Stock-IT.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link href="assets/css/dashboard.css" rel="stylesheet">
+  <link href="<?= asset_url('assets/css/dashboard.css') ?>" rel="stylesheet">
 </head>
 
 <body>
   <?php include 'navbar.php'; ?>
 
   <div class="container-fluid dashboard-container">
-    <h1 class="page-title">
+    <h1 class="page-title text-primary">
       <i class="bi bi-speedometer2 me-2"></i>แดชบอร์ด Stock-IT
     </h1>
 
     <!-- ปุ่มเลือกช่วงเวลา -->
     <div class="range-selector">
       <?php foreach ($range_labels as $key => $label): ?>
-        <a href="?range=<?= $key ?>" class="btn range-btn <?= $range === $key ? 'active' : '' ?>">
+        <button class="btn range-btn <?= $range === $key ? 'active' : '' ?>" data-range="<?= $key ?>">
           <?= $label ?>
-        </a>
+        </button>
       <?php endforeach; ?>
     </div>
     <div class="text-center text-muted small mb-4">
@@ -162,7 +313,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
     <div class="stats-grid">
       <a href="index.php" class="stat-card-link">
         <div class="stat-card primary">
-          <div class="stat-icon text-primary"><i class="bi bi-box-seam-fill"></i></div>
+          <div class="stat-icon text-primary"><i class="bi bi-box-seam-fill px-3 py-2 bg-primary-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_items) ?></div>
           <div class="stat-label">อุปกรณ์ทั้งหมด</div>
         </div>
@@ -170,7 +321,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 
       <a href="index.php?filter=low" class="stat-card-link">
         <div class="stat-card warning">
-          <div class="stat-icon text-warning"><i class="bi bi-exclamation-triangle-fill"></i></div>
+          <div class="stat-icon text-warning"><i class="bi bi-exclamation-triangle-fill px-3 py-2 bg-warning-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($low_stock) ?></div>
           <div class="stat-label">สต็อกต่ำ</div>
         </div>
@@ -178,7 +329,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 
       <a href="index.php?filter=zero" class="stat-card-link">
         <div class="stat-card danger">
-          <div class="stat-icon text-danger"><i class="bi bi-slash-circle-fill"></i></div>
+          <div class="stat-icon text-danger"><i class="bi bi-slash-circle-fill px-3 py-2 bg-danger-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($out_of_stock) ?></div>
           <div class="stat-label">หมดสต็อก</div>
         </div>
@@ -186,7 +337,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 
       <a href="history.php" class="stat-card-link">
         <div class="stat-card dark">
-          <div class="stat-icon text-dark"><i class="bi bi-clock-history"></i></div>
+          <div class="stat-icon text-dark"><i class="bi bi-clock-history px-3 py-2 bg-dark-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_history) ?></div>
           <div class="stat-label">ประวัติทำรายการ</div>
         </div>
@@ -194,7 +345,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 
       <a href="manage_employees.php" class="stat-card-link">
         <div class="stat-card primary">
-          <div class="stat-icon text-primary"><i class="bi bi-gear-fill"></i></div>
+          <div class="stat-icon text-primary"><i class="bi bi-diagram-3-fill px-3 py-2 bg-primary-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_departments) ?></div>
           <div class="stat-label">แผนก</div>
         </div>
@@ -202,7 +353,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 
       <a href="manage_employees.php" class="stat-card-link">
         <div class="stat-card info">
-          <div class="stat-icon text-info"><i class="bi bi-building-fill"></i></div>
+          <div class="stat-icon text-info"><i class="bi bi-building-fill px-3 py-2 bg-info-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_companies) ?></div>
           <div class="stat-label">บริษัท</div>
         </div>
@@ -210,7 +361,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 
       <a href="manage_employees.php" class="stat-card-link">
         <div class="stat-card success">
-          <div class="stat-icon text-success"><i class="bi bi-people-fill"></i></div>
+          <div class="stat-icon text-success"><i class="bi bi-people-fill px-3 py-2 bg-success-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_employees) ?></div>
           <div class="stat-label">รายชื่อพนักงาน</div>
         </div>
@@ -218,7 +369,7 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
 
       <a href="manage_users.php" class="stat-card-link">
         <div class="stat-card dark">
-          <div class="stat-icon text-secondary"><i class="bi bi-person-fill"></i></div>
+          <div class="stat-icon text-secondary"><i class="bi bi-person-fill px-3 py-2 bg-secondary-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_users) ?></div>
           <div class="stat-label">จำนวนยูสเซอร์</div>
         </div>
@@ -304,10 +455,10 @@ $json_details = json_encode($dept_details, JSON_UNESCAPED_UNICODE);
   <!-- โหลด Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <!-- โหลดไฟล์ JS ของเรา (สำคัญ: ต้องอยู่หลังตัวแปร window) -->
-  <script src="assets/js/dashboard.js" defer></script>
+  <script src="<?= asset_url('assets/js/dashboard.js') ?>" defer></script>
   <!-- SweetAlert -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="assets/js/toast.js"></script>
+  <script src="<?= asset_url('assets/js/toast.js') ?>"></script>
 </body>
 
 </html>

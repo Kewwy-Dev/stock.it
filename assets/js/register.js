@@ -43,3 +43,29 @@
       this.querySelector('i').classList.toggle('bi-eye');
       this.querySelector('i').classList.toggle('bi-eye-slash');
     });
+    // Department dropdown
+    document.addEventListener('click', function (e) {
+      const item = e.target.closest('.dept-select');
+      if (!item) return;
+      e.preventDefault();
+
+      const dropdown = item.closest('.dropdown');
+      if (!dropdown) return;
+
+      const menu = item.closest('.dropdown-menu');
+      if (menu) {
+        menu.querySelectorAll('.dropdown-item').forEach((el) => {
+          el.classList.remove('active');
+        });
+      }
+
+      item.classList.add('active');
+
+      const value = item.dataset.value || '';
+      const label = dropdown.querySelector('.dept-label');
+      const input = dropdown.querySelector('.dept-input');
+
+      if (input) input.value = value;
+      if (label) label.textContent = item.textContent.trim();
+    });
+

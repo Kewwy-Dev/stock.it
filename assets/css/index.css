@@ -413,14 +413,14 @@ h2.mb-0 {
   }
 
   .btn-favorite {
-    top: 4px !important;
-    left: 4px !important;
+    top: -4px !important;
+    left: -4px !important;
     width: 28px;
     height: 28px;
   }
 
   .btn-favorite i {
-    font-size: 1.1rem !important;
+    font-size: 1.5rem !important;
   }
 
   .fab, .ctg {
@@ -482,14 +482,14 @@ h2.mb-0 {
   }
 
   .btn-favorite {
-    top: 6px !important;
-    left: 6px !important;
+    top: -6px !important;
+    left: -6px !important;
     width: 32px;
     height: 32px;
   }
 
   .btn-favorite i {
-    font-size: 1.3rem !important;
+    font-size: 1.8rem !important;
   }
 
   .fab, .ctg {
@@ -601,4 +601,150 @@ h2.mb-0 {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+
+/* Modal จัดการหมวดหมู่: รองรับ iPad/Mobile */
+.manage-categories-modal .modal-dialog {
+  max-width: 900px;
+  margin: 1.5rem auto;
+}
+
+.manage-categories-modal .modal-header {
+  padding: 1rem 1.25rem;
+}
+
+.manage-categories-modal .modal-body {
+  padding: 1.25rem;
+}
+
+.manage-categories-modal .table-responsive {
+  border-radius: 12px;
+}
+
+.manage-categories-modal .category-actions {
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.manage-categories-modal .category-label {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .manage-categories-modal .modal-dialog {
+    max-width: 95vw;
+    margin: 0.75rem auto;
+  }
+
+  .manage-categories-modal .modal-title {
+    font-size: 1rem;
+  }
+
+  .manage-categories-modal .table {
+    font-size: 0.9rem;
+  }
+
+  .manage-categories-modal .category-actions .btn {
+    padding: 0.25rem 0.65rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .manage-categories-modal .modal-body {
+    padding: 1rem;
+  }
+
+  .manage-categories-modal .modal-title {
+    font-size: 1rem;
+  }
+
+  .manage-categories-modal .modal-body .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .manage-categories-modal .modal-content {
+    border-radius: 0;
+  }
+
+  .manage-categories-modal .modal-header {
+    padding: 0.9rem 1rem;
+  }
+
+  .manage-categories-modal .modal-body {
+    padding: 1rem;
+  }
+
+  .manage-categories-modal table thead {
+    display: none;
+  }
+
+  .manage-categories-modal .category-name-cell {
+    width: auto;
+    flex: 1 1 55%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .manage-categories-modal .category-name-text {
+    font-weight: 600;
+  }
+
+  .manage-categories-modal .category-count-cell {
+    width: auto;
+    flex: 1 1 35%;
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+  }
+
+  .manage-categories-modal .category-count-text {
+    font-weight: 600;
+  }
+
+  .manage-categories-modal .category-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-weight: 600;
+  }
+
+  .manage-categories-modal table,
+  .manage-categories-modal tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .manage-categories-modal tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 14px;
+    padding: 0.65rem 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .manage-categories-modal td {
+    display: block;
+    width: 100%;
+    padding: 0.25rem 0;
+    text-align: left !important;
+  }
+
+  .manage-categories-modal .category-actions {
+    flex: 1 1 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .manage-categories-modal .category-actions .btn {
+    flex: 1;
+  }
 }

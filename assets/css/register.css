@@ -98,3 +98,54 @@ body {
       .register-card { width: 95%; }
       .card-header h3 { font-size: 1.4rem; }
     }
+    .custom-filter-btn {
+      font-size: 0.9rem;
+      padding: 0.6rem 1rem;
+      border-radius: 10px;
+      border-color: #dee2e6;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    .custom-filter-btn:hover {
+      border-color: #0d6efd;
+      box-shadow: 0 2px 8px rgba(13,110,253,0.1);
+    }
+
+    .dropdown-menu {
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      padding: 10px;
+      transform: translateY(10px);
+      opacity: 0;
+      display: block;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .dropdown-menu.show {
+      transform: translateY(0);
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .dropdown-item {
+      border-radius: 8px;
+      margin: 2px 8px;
+      padding: 10px 15px;
+      transition: all 0.2s;
+    }
+
+    .dropdown-item:hover {
+      background-color: #f0f4ff;
+      color: #0d6efd;
+      padding-left: 20px;
+    }
+
+    .dropdown-item.active,
+    .dropdown-item.selected {
+      background-color: #e7f1ff !important;
+      color: #0d6efd !important;
+      font-weight: 500;
+    }

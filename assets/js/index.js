@@ -104,15 +104,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const type = typeInput.value?.trim().toUpperCase() || "";
     const isOut = type === "OUT";
 
-    // หา element ทั้ง 3 ตัว
-    const companySelect = document.querySelector('select[name="company_id"]');
-    const deptInput = document.getElementById("department_id"); // hidden input
-    const employeeSelect = document.getElementById("employeeSelect"); // select จริง
+    const companyBtn = document.getElementById("companyDropdown");
+    const deptBtn = document.getElementById("departmentDropdown");
+    const empBtn = document.getElementById("employeeDropdown");
+    const companyVal = document.getElementById("company_id");
+    const deptVal = document.getElementById("department_id");
+    const empVal = document.getElementById("employee_id");
 
-    // เปิด/ปิด required เฉพาะตอน OUT
-    if (companySelect) companySelect.required = isOut;
-    if (deptInput) deptInput.required = isOut;
-    if (employeeSelect) employeeSelect.required = isOut;
+    if (companyBtn) companyBtn.dataset.required = isOut ? "true" : "false";
+    if (deptBtn) deptBtn.dataset.required = isOut ? "true" : "false";
+    if (empBtn) empBtn.dataset.required = isOut ? "true" : "false";
+
+    if (!isOut) {
+      companyBtn?.classList.remove("is-invalid");
+      deptBtn?.classList.remove("is-invalid");
+      empBtn?.classList.remove("is-invalid");
+    } else {
+      if (companyBtn && !companyVal?.value) companyBtn.classList.add("is-invalid");
+      if (deptBtn && !deptVal?.value) deptBtn.classList.add("is-invalid");
+      if (empBtn && !empVal?.value) empBtn.classList.add("is-invalid");
+    }
 
     // Optional: เพิ่ม/ลบ class เพื่อให้เห็นชัดว่าต้องกรอก (เช่น ขอบแดง)
     const labels = document.querySelectorAll("#outSection label");
@@ -145,13 +156,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // เป็น OUT → ตรวจทั้ง 3 ฟิลด์
-      const companyVal =
-        document.querySelector('select[name="company_id"]')?.value?.trim() ||
-        "";
-      const deptVal =
-        document.getElementById("department_id")?.value?.trim() || "";
-      const employeeVal =
-        document.getElementById("employeeSelect")?.value?.trim() || "";
+      const companyVal = document.getElementById("company_id")?.value?.trim() || "";
+      const deptVal = document.getElementById("department_id")?.value?.trim() || "";
+      const employeeVal = document.getElementById("employee_id")?.value?.trim() || "";
+
+      const companyBtn = document.getElementById("companyDropdown");
+      const deptBtn = document.getElementById("departmentDropdown");
+      const empBtn = document.getElementById("employeeDropdown");
 
       let errorMsg = "";
 
@@ -161,6 +172,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (errorMsg) {
         e.preventDefault(); // หยุดการ submit
+        companyBtn?.classList.toggle("is-invalid", !companyVal);
+        deptBtn?.classList.toggle("is-invalid", !deptVal);
+        empBtn?.classList.toggle("is-invalid", !employeeVal);
 
         // แจ้งเตือนแบบสวย ๆ (ถ้าใช้ SweetAlert2)
         if (typeof Swal !== "undefined") {
@@ -201,6 +215,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     render(filtered);
   }
+
+  const categoryLabelEls = document.querySelectorAll("#categoryLabel");
+  const itemFilterLabelEls = document.querySelectorAll("#itemFilterLabel");
+
+  function setCategoryLabel(text) {
+    categoryLabelEls.forEach((el) => {
+      el.textContent = text;
+    });
+  }
+
+  function setItemFilterLabel(text) {
+    itemFilterLabelEls.forEach((el) => {
+      el.textContent = text;
+    });
+  }
   // กรอง สต็อกต่ำ & สต็อกหมดอัตโนมัติจาก dashboard
   const urlParams = new URLSearchParams(window.location.search);
   const autoFilter = urlParams.get("filter");
@@ -208,7 +237,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (autoFilter === "low" || autoFilter === "zero") {
     currentRightFilter = autoFilter;
 
-    const itemFilterLabel = document.getElementById("itemFilterLabel");
     const itemFilterSelects = document.querySelectorAll(".item-filter-select");
 
     let displayText = "ค้นหาอุปกรณ์";
@@ -226,17 +254,12 @@ document.addEventListener("DOMContentLoaded", () => {
     itemFilterSelects.forEach((el) => el.classList.remove("active"));
 
     // เพิ่ม active ให้ตัวเลือกที่ตรง
-    const targetBtn = document.querySelector(
-      `.item-filter-select${targetSelector}`,
-    );
-    if (targetBtn) {
-      targetBtn.classList.add("active");
-    }
+    document
+      .querySelectorAll(`.item-filter-select${targetSelector}`)
+      .forEach((btn) => btn.classList.add("active"));
 
     // อัปเดตข้อความบนปุ่ม dropdown
-    if (itemFilterLabel) {
-      itemFilterLabel.textContent = displayText;
-    }
+    setItemFilterLabel(displayText);
 
     console.log(`Auto filter applied from URL: ?filter=${autoFilter}`);
   }
@@ -246,13 +269,16 @@ document.addEventListener("DOMContentLoaded", () => {
     categoryFilter.addEventListener("change", (e) => {
       currentCategory = e.target.value;
       console.log("เลือกหมวดหมู่ →", currentCategory);
+      const selectedText =
+        e.target.options?.[e.target.selectedIndex]?.textContent?.trim() || "";
+      setCategoryLabel(
+        currentCategory === "" ? "หมวดหมู่อุปกรณ์" : selectedText,
+      );
       applyFilters();
     });
   }
   // กรองIDหมวดหมู่
   const categoryItems = document.querySelectorAll(".category-select");
-  const categoryLabel = document.getElementById("categoryLabel");
-
   categoryItems.forEach((item) => {
     item.addEventListener("click", (e) => {
       e.preventDefault();
@@ -261,14 +287,16 @@ document.addEventListener("DOMContentLoaded", () => {
       categoryItems.forEach((el) => el.classList.remove("active", "selected"));
 
       // เพิ่ม active ให้ตัวที่คลิก
-      item.classList.add("active"); // หรือใช้ "selected" ก็ได้
-
       currentCategory = item.dataset.value || "";
 
-      // if (categoryLabel) {
-      //   categoryLabel.textContent =
-      //     currentCategory === "" ? "หมวดหมู่สินค้า" : item.textContent.trim();
-      // }
+      categoryItems.forEach((el) => {
+        if ((el.dataset.value || "") === currentCategory) {
+          el.classList.add("active");
+        }
+      });
+      setCategoryLabel(
+        currentCategory === "" ? "หมวดหมู่อุปกรณ์" : item.textContent.trim(),
+      );
 
       console.log("กรองหมวดหมู่ ID:", currentCategory);
       applyFilters();
@@ -276,45 +304,156 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // กรองชื่ออุปกรณ์ / เหลือน้อย / หมด
-  const itemFilterSelects = document.querySelectorAll(".item-filter-select");
-  const itemFilterLabel = document.getElementById("itemFilterLabel");
+  function handleItemFilterClick(btn, e) {
+    e.preventDefault();
 
-  itemFilterSelects.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+    const itemFilterSelects = document.querySelectorAll(".item-filter-select");
+
+    // ลบ active จากทุกตัวก่อน
+    itemFilterSelects.forEach((el) =>
+      el.classList.remove("active", "selected"),
+    );
+
+    // เพิ่ม active ให้ตัวที่คลิก
+    currentRightFilter = btn.dataset.value;
+
+    itemFilterSelects.forEach((el) => {
+      if ((el.dataset.value || "") === currentRightFilter) {
+        el.classList.add("active");
+      }
+    });
+
+    // อัปเดตข้อความ label (ปรับแต่งตามต้องการ)
+    let displayText = "ค้นหาอุปกรณ์";
+    if (currentRightFilter === "low") {
+      displayText = "เหลือน้อย (1–4 ชิ้น)";
+    } else if (currentRightFilter === "zero") {
+      displayText = "หมดสต็อก";
+    } else if (currentRightFilter && !isNaN(currentRightFilter)) {
+      const selected = items.find(
+        (it) => String(it.id) === currentRightFilter,
+      );
+      displayText = selected ? selected.name : "อุปกรณ์ที่เลือก";
+    } else if (currentRightFilter === "") {
+      displayText = "ทุกอุปกรณ์";
+    }
+    setItemFilterLabel(displayText);
+
+    console.log("เลือกตัวกรองขวา →", currentRightFilter);
+    applyFilters();
+  }
+
+  function bindItemFilterSelects(root = document) {
+    const itemFilterSelects = root.querySelectorAll(".item-filter-select");
+    itemFilterSelects.forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", (e) => handleItemFilterClick(btn, e));
+    });
+  }
+
+  bindItemFilterSelects();
+
+  // Dropdown
+  // Dropdown ใน modal เพิ่ม/แก้ไขอุปกรณ์
+  const categoryModalItems = document.querySelectorAll(".category-select-modal");
+  const itemCategoryLabel = document.getElementById("itemCategoryLabel");
+  const itemCategoryValue = document.getElementById("itemCategoryValue");
+
+  categoryModalItems.forEach((item) => {
+    item.addEventListener("click", (e) => {
       e.preventDefault();
+      categoryModalItems.forEach((el) => el.classList.remove("active"));
 
-      // ลบ active จากทุกตัวก่อน
-      itemFilterSelects.forEach((el) =>
-        el.classList.remove("active", "selected"),
+      const value = item.dataset.value || "";
+      if (itemCategoryValue) itemCategoryValue.value = value;
+      if (itemCategoryLabel) itemCategoryLabel.textContent = item.textContent.trim();
+    });
+  });
+
+  // Dropdown ใน modal เพิ่ม/เบิก
+  const companyItems = document.querySelectorAll(".company-select-modal");
+  const companyLabel = document.getElementById("companyLabel");
+  const companyValue = document.getElementById("company_id");
+
+  companyItems.forEach((item) => {
+    item.addEventListener("click", (e) => {
+      e.preventDefault();
+      companyItems.forEach((el) => el.classList.remove("active"));
+
+      const value = item.dataset.value || "";
+      if (companyValue) companyValue.value = value;
+      if (companyLabel) companyLabel.textContent = item.textContent.trim();
+    });
+  });
+
+  const departmentItems = document.querySelectorAll(".department-select-modal");
+  const departmentLabel = document.getElementById("departmentLabel");
+  const departmentValue = document.getElementById("department_id");
+  const employeeMenu = document.getElementById("employeeMenu");
+  const employeeLabel = document.getElementById("employeeLabel");
+  const employeeValue = document.getElementById("employee_id");
+  const employeeDropdown = document.getElementById("employeeDropdown");
+
+  function resetEmployeeDropdown() {
+    if (employeeMenu) {
+      employeeMenu.innerHTML =
+        '<li><span class="dropdown-item text-muted">— เลือกแผนกก่อน —</span></li>';
+    }
+    if (employeeDropdown) employeeDropdown.disabled = true;
+    if (employeeLabel) employeeLabel.textContent = "— เลือกผู้เบิก —";
+    if (employeeValue) employeeValue.value = "";
+    employeeDropdown?.classList.remove("is-invalid");
+  }
+
+  departmentItems.forEach((item) => {
+    item.addEventListener("click", (e) => {
+      e.preventDefault();
+      departmentItems.forEach((el) => el.classList.remove("active"));
+
+      const value = item.dataset.value || "";
+      if (departmentValue) departmentValue.value = value;
+      if (departmentLabel) departmentLabel.textContent = item.textContent.trim();
+
+      resetEmployeeDropdown();
+
+      if (!value) return;
+      const filteredEmps = employees.filter(
+        (emp) => String(emp.department_id) === String(value),
       );
 
-      // เพิ่ม active ให้ตัวที่คลิก
-      btn.classList.add("active");
-
-      currentRightFilter = btn.dataset.value;
-
-      // อัปเดตข้อความ label (ปรับแต่งตามต้องการ)
-      let displayText = "ค้นหาอุปกรณ์";
-      if (currentRightFilter === "low") {
-        displayText = "เหลือน้อย (1–4 ชิ้น)";
-      } else if (currentRightFilter === "zero") {
-        displayText = "หมดสต็อก";
-      } else if (currentRightFilter && !isNaN(currentRightFilter)) {
-        const selected = items.find(
-          (it) => String(it.id) === currentRightFilter,
-        );
-        displayText = selected ? selected.name : "อุปกรณ์ที่เลือก";
-      } else if (currentRightFilter === "") {
-        displayText = "ทุกอุปกรณ์";
+      if (employeeMenu) {
+        employeeMenu.innerHTML = "";
+        if (filteredEmps.length === 0) {
+          employeeMenu.innerHTML =
+            '<li><span class="dropdown-item text-muted">— ไม่พบผู้เบิก —</span></li>';
+        } else {
+          filteredEmps.forEach((emp) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<a class="dropdown-item employee-select-modal" href="#" data-value="${emp.id}">${esc(
+              emp.name,
+            )}</a>`;
+            employeeMenu.appendChild(li);
+          });
+        }
       }
 
-      // if (itemFilterLabel) {
-      //   itemFilterLabel.textContent = displayText;
-      // }
-
-      console.log("เลือกตัวกรองขวา →", currentRightFilter);
-      applyFilters();
+      if (employeeDropdown) employeeDropdown.disabled = false;
     });
+  });
+
+  document.addEventListener("click", function (e) {
+    const employeeItem = e.target.closest(".employee-select-modal");
+    if (!employeeItem) return;
+    e.preventDefault();
+
+    const value = employeeItem.dataset.value || "";
+    if (employeeValue) employeeValue.value = value;
+    if (employeeLabel) employeeLabel.textContent = employeeItem.textContent.trim();
+
+    const allEmployeeItems = document.querySelectorAll(".employee-select-modal");
+    allEmployeeItems.forEach((el) => el.classList.remove("active"));
+    employeeItem.classList.add("active");
   });
 
   // Preview รูป (ปรับให้รองรับ input id="imageInput")
@@ -349,6 +488,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const isRemoveBg = removeBgCheckbox?.checked || false;
       const hasNewImage = imageInput?.files?.length > 0;
 
+      function isInvalidApiKey(status, message) {
+        const text = (message || "").toString().toLowerCase();
+        if (status === 401 || status === 403) return true;
+        return (
+          text.includes("api key") ||
+          text.includes("apikey") ||
+          text.includes("unauthorized") ||
+          text.includes("authentication") ||
+          text.includes("invalid api")
+        );
+      }
+
       // Step 1: ลบพื้นหลังก่อน (ถ้าติ๊ก)
       let finalFormData = new FormData(form);
       if (isRemoveBg && hasNewImage) {
@@ -367,8 +518,21 @@ document.addEventListener("DOMContentLoaded", () => {
           });
           const bgData = await bgRes.json();
 
-          if (!bgData.success)
+          if (!bgData.success) {
+            if (isInvalidApiKey(bgRes.status, bgData.error)) {
+              Toast.fire({
+                icon: "error",
+                title: "API Remove.bg ไม่ถูกต้อง",
+                text: "กรุณาตรวจสอบ API Key ในเมนู API Remove.bg",
+                timer: 3500,
+                background: "#f27474",
+              });
+              submitBtn.style.display = "inline-block";
+              processingBtn.style.display = "none";
+              return;
+            }
             throw new Error(bgData.error || "ลบพื้นหลังล้มเหลว");
+          }
 
           // แปลง base64 → File ใหม่
           const blob = await (await fetch(bgData.base64)).blob();
@@ -440,7 +604,56 @@ document.addEventListener("DOMContentLoaded", () => {
           document.getElementById("modalTitle").textContent = "เพิ่มอุปกรณ์";
 
           // Reload หน้าเพื่ออัปเดตข้อมูล (ง่ายสุด)
-          setTimeout(() => window.location.reload(), 1200);
+          const savedItem = result.item;
+          if (savedItem && savedItem.id) {
+            const idx = items.findIndex(
+              (it) => String(it.id) === String(savedItem.id),
+            );
+            if (idx >= 0) {
+              items[idx] = { ...items[idx], ...savedItem };
+            } else {
+              items.push(savedItem);
+            }
+
+            // เรียงลำดับใหม่ (favorite มาก่อน)
+            items.sort((a, b) => {
+              if (a.is_favorite !== b.is_favorite)
+                return b.is_favorite - a.is_favorite;
+              return a.name.localeCompare(b.name);
+            });
+
+            // อัปเดตรายการใน dropdown filter แบบไม่ต้อง reload
+            const filterMenus = document.querySelectorAll(
+              'ul.dropdown-menu[aria-labelledby="itemDropdown"]',
+            );
+            filterMenus.forEach((menu) => {
+              const listWrap = menu.querySelector("div");
+              if (!listWrap) return;
+              let option = listWrap.querySelector(
+                `.item-filter-select[data-value="${savedItem.id}"]`,
+              );
+              if (!option) {
+                const li = document.createElement("li");
+                const a = document.createElement("a");
+                a.className = "dropdown-item item-filter-select";
+                a.href = "#";
+                a.dataset.value = savedItem.id;
+                a.textContent = savedItem.name;
+                li.appendChild(a);
+                listWrap.appendChild(li);
+                bindItemFilterSelects(menu);
+              } else {
+                option.textContent = savedItem.name;
+              }
+            });
+
+            if (String(currentRightFilter) === String(savedItem.id)) {
+              setItemFilterLabel(savedItem.name);
+            }
+
+          }
+
+          applyFilters();
         } else {
           // ❌ Toast ล้มเหลว
           Toast.fire({
@@ -468,7 +681,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ฟังก์ชันเปิด modal เพิ่มอุปกรณ์ (เหมือนเดิม)
   window.openAddModal = function () {
-    document.getElementById("modalTitle").textContent = "เพิ่มอุปกรณ์";
+    document.getElementById("modalTitle").innerHTML = '<i class="bi bi-boxes me-2"></i>เพิ่มอุปกรณ์';
+
     const form = document.querySelector("#addItemModal form");
     if (form) form.reset();
 
@@ -479,10 +693,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("oldImage").value = "";
 
     // ถ้ามี select category ใน modal → reset เป็นค่าเริ่มต้น
-    const catSelect = document.querySelector(
-      '#addItemModal select[name="category_id"]',
-    );
-    if (catSelect) catSelect.value = "";
+    if (itemCategoryValue) itemCategoryValue.value = "";
+    if (itemCategoryLabel) itemCategoryLabel.textContent = "— ไม่ระบุ —";
+    categoryModalItems.forEach((el) => el.classList.remove("active"));
 
     new bootstrap.Modal("#addItemModal").show();
   };
@@ -498,39 +711,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const outSection = document.getElementById("outSection");
     outSection.style.display = type === "OUT" ? "block" : "none";
 
-    const empSelect = document.getElementById("employeeSelect");
-    empSelect.disabled = true;
-    empSelect.innerHTML = '<option value="">— เลือกผู้เบิก —</option>';
+    if (companyValue) companyValue.value = "";
+    if (companyLabel) companyLabel.textContent = "— ไม่ระบุ —";
+    companyItems.forEach((el) => el.classList.remove("active"));
 
-    document.getElementById("departmentSelect").value = "";
+    if (departmentValue) departmentValue.value = "";
+    if (departmentLabel) departmentLabel.textContent = "— เลือกแผนก —";
+    departmentItems.forEach((el) => el.classList.remove("active"));
+
+    resetEmployeeDropdown();
 
     new bootstrap.Modal("#transactionModal").show();
   };
 
-  // เมื่อเลือกแผนก → โหลดพนักงาน (เหมือนเดิม)
-  const deptSelect = document.getElementById("departmentSelect");
-  if (deptSelect) {
-    deptSelect.addEventListener("change", function () {
-      const deptId = this.value;
-      document.getElementById("department_id").value = deptId;
-
-      const empSelect = document.getElementById("employeeSelect");
-      empSelect.innerHTML = '<option value="">— เลือกผู้เบิก —</option>';
-
-      const filteredEmps = employees.filter(
-        (e) => String(e.department_id) === deptId,
-      );
-
-      filteredEmps.forEach((e) => {
-        const opt = document.createElement("option");
-        opt.value = e.id;
-        opt.textContent = e.name;
-        empSelect.appendChild(opt);
-      });
-
-      empSelect.disabled = false;
-    });
-  }
+  // เมื่อเลือกแผนก → โหลดพนักงาน (ย้ายไปใช้ dropdown)
 
   // Modal ลบ (เหมือนเดิม)
   document.addEventListener("click", function (e) {
@@ -541,25 +735,66 @@ document.addEventListener("DOMContentLoaded", () => {
 
       Swal.fire({
         title: "ยืนยันการลบ?",
-        text: `คุณต้องการลบอุปกรณ์ "${name}" ใช่หรือไม่?`,
+        html: `<strong class="text-danger">${name}</strong>`,
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#d33",
-        cancelButtonColor: "#3085d6",
-        confirmButtonText: "ใช่, ลบเลย!",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: `<i class="bi bi-trash-fill me-2"></i>ยืนยัน`,
         cancelButtonText: "ยกเลิก",
-      }).then((result) => {
+      }).then(async (result) => {
         if (result.isConfirmed) {
-          // สร้าง Form เพื่อ Submit การลบ
-          const form = document.createElement("form");
-          form.method = "POST";
-          form.action = "delete_item.php";
-          form.innerHTML = `
-          <input type="hidden" name="delete_id" value="${id}">
-          <input type="hidden" name="csrf_token" value="${window.csrfToken}">
-        `;
-          document.body.appendChild(form);
-          form.submit();
+          try {
+            const response = await fetch("delete_item.php", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
+              },
+              body: `delete_id=${encodeURIComponent(id)}&csrf_token=${encodeURIComponent(
+                window.csrfToken,
+              )}`,
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+              throw new Error(data.error || "ลบไม่สำเร็จ");
+            }
+
+            items = items.filter((it) => String(it.id) !== String(id));
+
+            if (String(currentRightFilter) === String(id)) {
+              currentRightFilter = "";
+              setItemFilterLabel("ทุกอุปกรณ์");
+            }
+
+            const filterMenus = document.querySelectorAll(
+              'ul.dropdown-menu[aria-labelledby="itemDropdown"]',
+            );
+            filterMenus.forEach((menu) => {
+              const listWrap = menu.querySelector("div");
+              if (!listWrap) return;
+              const option = listWrap.querySelector(
+                `.item-filter-select[data-value="${id}"]`,
+              );
+              option?.closest("li")?.remove();
+            });
+
+            applyFilters();
+            Toast.fire({
+              icon: "success",
+              title: "ลบอุปกรณ์เรียบร้อย",
+              background: "#a5dc86",
+            });
+          } catch (err) {
+            Toast.fire({
+              icon: "error",
+              title: "ลบไม่สำเร็จ",
+              text: err.message,
+              background: "#f27474",
+            });
+          }
         }
       });
     }
@@ -678,7 +913,7 @@ window.openEditModal = function (id) {
   }
 
   // เตรียม modal เดิมให้เป็นโหมดแก้ไข
-  document.getElementById("modalTitle").textContent = "แก้ไขอุปกรณ์";
+  document.getElementById("modalTitle").innerHTML = '<i class="bi bi-pencil-square me-2"></i>แก้ไขอุปกรณ์';
 
   const form = document.querySelector("#addItemModal form");
   // ถ้า save_item.php รองรับทั้งเพิ่ม/แก้ไข → ใช้ action เดิมได้เลย
@@ -686,8 +921,21 @@ window.openEditModal = function (id) {
   document.getElementById("itemId").value = item.id;
   form.querySelector('input[name="name"]').value = item.name;
 
-  const catSelect = form.querySelector('select[name="category_id"]');
-  catSelect.value = item.category_id || "";
+  const categoryValueInput = document.getElementById("itemCategoryValue");
+  const categoryLabelEl = document.getElementById("itemCategoryLabel");
+  if (categoryValueInput) categoryValueInput.value = item.category_id || "";
+  if (categoryLabelEl)
+    categoryLabelEl.textContent = item.category_name
+      ? item.category_name
+      : "— ไม่ระบุ —";
+
+  const modalCategoryItems = document.querySelectorAll(".category-select-modal");
+  modalCategoryItems.forEach((el) => el.classList.remove("active"));
+  modalCategoryItems.forEach((el) => {
+    if (String(el.dataset.value || "") === String(item.category_id || "")) {
+      el.classList.add("active");
+    }
+  });
 
   document.getElementById("oldImage").value = item.image || "";
 
@@ -703,122 +951,3 @@ window.openEditModal = function (id) {
   new bootstrap.Modal(document.getElementById("addItemModal")).show();
 };
 
-// Manage_Removebg
-document.addEventListener("DOMContentLoaded", () => {
-  // คัดลอก API Key
-  document.getElementById("copyApiKeyBtn")?.addEventListener("click", () => {
-    const keyInput = document.getElementById("currentApiKey");
-    const copyBtn = document.getElementById("copyApiKeyBtn");
-
-    // เตรียมข้อความ/ไอคอนเดิมไว้
-    const originalHTML = copyBtn.innerHTML;
-
-    keyInput.select();
-
-    navigator.clipboard
-      .writeText(keyInput.value)
-      .then(() => {
-        // เปลี่ยนเป็นติ๊กถูก + สีเขียว (หรือสีที่ต้องการ)
-        copyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
-        copyBtn.classList.add("btn-success");
-        copyBtn.classList.remove("btn-outline-secondary");
-        setTimeout(() => {
-          copyBtn.innerHTML = originalHTML;
-          copyBtn.classList.remove("btn-success");
-          copyBtn.classList.add("btn-outline-secondary");
-        }, 3000);
-        Toast.fire({
-          icon: "success",
-          title: "คัดลอก API Key แล้ว",
-          background: "#a5dc86",
-        });
-      })
-      .catch((err) => {
-        console.error("คัดลอกล้มเหลว:", err);
-        Toast.fire({
-          icon: "error",
-          title: "เกิดข้อผิดพลาด: " + err.message,
-          background: "#f27474",
-        });
-      });
-  });
-
-  // บันทึก API Key ใหม่
-  document
-    .getElementById("updateApiKeyForm")
-    ?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const newKey = document.getElementById("newApiKey").value.trim();
-      if (!newKey) return;
-      Toast.fire({
-        icon: "warning",
-        title: "กรุณาใส่ API Key",
-        background: "#f8bb86", // สีส้มสำหรับแจ้งเตือน
-      });
-      if (newKey.length < 20) return;
-      Toast.fire({
-        icon: "warning",
-        title: "API Key ดูเหมือนสั้นเกินไป กรุณาตรวจสอบ",
-        background: "#f8bb86",
-      });
-
-      if (!window.csrfToken) {
-        return Toast.fire({
-          icon: "error",
-          title: "ไม่พบ CSRF token กรุณารีเฟรชหน้าและลองใหม่",
-          background: "#f27474", // สีแดงสำหรับข้อผิดพลาด
-        });
-      }
-
-      try {
-        const res = await fetch("update_removebg_key.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `new_key=${encodeURIComponent(
-            newKey,
-          )}&csrf_token=${encodeURIComponent(window.csrfToken)}`,
-        });
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        if (data.success) {
-          // อัปเดตช่องปัจจุบันทันที
-          document.getElementById("currentApiKey").value = newKey;
-
-          // แสดงแจ้งเตือน
-          Toast.fire({
-            icon: "success",
-            title: "บันทึก API Key ใหม่เรียบร้อย!",
-            background: "#a5dc86",
-          });
-
-          // ล้างช่อง input
-          document.getElementById("newApiKey").value = "";
-
-          // ปิด modal อัตโนมัติ
-          const modalElement = document.getElementById("manageRemoveBgModal");
-          const modalInstance = bootstrap.Modal.getInstance(modalElement);
-          if (modalInstance) {
-            modalInstance.hide();
-          }
-        } else {
-          Toast.fire({
-            icon: "error",
-            title: "เกิดข้อผิดพลาด: " + err.message,
-            background: "#f27474",
-          });
-        }
-      } catch (err) {
-        console.error("Error saving API Key:", err);
-        Toast.fire({
-          icon: "error",
-          title: "เกิดข้อผิดพลาด: " + err.message,
-          background: "#f27474",
-        });
-      }
-    });
-});

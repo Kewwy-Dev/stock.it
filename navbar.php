@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/asset_helper.php';
 // ตรวจสอบ session ก่อนแสดง navbar
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
@@ -42,11 +43,59 @@ function getRemoveBgCredits($key)
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/index.css">
+  <link rel="stylesheet" href="<?= asset_url('assets/css/index.css') ?>">
 </head>
 <style>
   body {
     font-family: 'Kanit', 'Segoe UI', sans-serif;
+  }
+
+  /* ป้องกัน dropdown จองพื้นที่เมื่อซ่อน */
+  .custom_dropdown-navbar {
+    display: none !important;
+    /* ใช้ !important เพื่อ override Bootstrap */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+  }
+
+  .custom_dropdown-navbar.show {
+    display: block !important;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    animation: dropdownPop 0.2s ease-out forwards;
+  }
+
+  @keyframes dropdownPop {
+    0% {
+      opacity: 0;
+      transform: translateX(-12px) scale(0.96);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  /* ลด margin/padding ที่อาจทำให้ reserve space */
+  .nav-item.dropdown {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* บนมือถือ ให้ dropdown อยู่เต็มจอถ้าจำเป็น (optional แต่ช่วย responsive) */
+  @media (max-width: 991.98px) {
+    .custom_dropdown-navbar {
+      position: absolute;
+      width: 100%;
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      border-radius: 0 0 8px 8px;
+    }
   }
 </style>
 
@@ -54,7 +103,7 @@ function getRemoveBgCredits($key)
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
-      <a class="navbar-brand" href="dashboard.php"><i class="bi bi-box-fill me-1"></i>Stock-IT</a>
+      <a class="navbar-brand" href="dashboard"><i class="bi bi-box-fill me-1"></i>Stock-IT</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -62,32 +111,30 @@ function getRemoveBgCredits($key)
         <ul class="navbar-nav ms-auto">
           <?php if (!empty($_SESSION['user_id'])): ?>
             <li class="nav-item">
-              <a class="nav-link <?= $current_page === 'index' ? 'active' : '' ?>" href="index.php">
+              <a class="nav-link <?= $current_page === 'index' ? 'active' : '' ?>" href="index">
                 <i class="bi bi-box-fill me-1"></i>อุปกรณ์คงคลัง
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link <?= $current_page === 'history' ? 'active' : '' ?>" href="history.php">
+              <a class="nav-link <?= $current_page === 'history' ? 'active' : '' ?>" href="history">
                 <i class="bi bi-clock-history me-1"></i>ประวัติทำรายการ
               </a>
             </li>
-            <?php if ($_SESSION['user_role'] === 'admin'): ?>
-              <li class="nav-item">
-                <a class="nav-link <?= $current_page === 'manage_employees' ? 'active' : '' ?>" href="manage_employees.php">
-                  <i class="bi bi-person-fill-gear me-1"></i>จัดการองค์กร
-                </a>
-              </li>
-            <?php endif; ?>
+            <li class="nav-item">
+              <a class="nav-link <?= $current_page === 'manage_employees' ? 'active' : '' ?>" href="manage_employees">
+                <i class="bi bi-person-fill-gear me-1"></i>จัดการองค์กร
+              </a>
+            </li>
             <!-- Dropdown -->
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($_SESSION['user_name']) ?>
               </a>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person me-2"></i>ข้อมูลส่วนตัว</a></li>
+              <ul class="dropdown-menu custom_dropdown-navbar dropdown-menu-end shadow-lg border-0 rounded-3">
+                <li><a class="dropdown-item" href="profile"><i class="bi bi-person me-2"></i>ข้อมูลส่วนตัว</a></li>
                 <?php if ($user_role === 'admin'): ?>
-                  <li><a class="dropdown-item" href="manage_users.php"><i class="bi bi-person-gear me-2"></i>จัดการผู้ใช้</a></li>
-                  <?php if ($user_name = 'admin'): ?>
+                  <li><a class="dropdown-item" href="manage_users"><i class="bi bi-person-gear me-2"></i>จัดการผู้ใช้</a></li>
+                  <?php if ($user_role === 'admin'): ?>
                     <li>
                       <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#manageRemoveBgModal">
                         <i class="bi bi-gear-wide-connected me-2"></i>API Remove.bg
@@ -98,15 +145,15 @@ function getRemoveBgCredits($key)
                 <li>
                   <hr class="dropdown-divider">
                 </li>
-                <li><a class="dropdown-item" href="logout.php"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
+                <li><a class="dropdown-item text-danger" href="logout"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
               </ul>
             </li>
           <?php else: ?>
             <li class="nav-item">
-              <a class="nav-link" href="login.php"><i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ</a>
+              <a class="nav-link" href="login"><i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="register.php"><i class="bi bi-person-add me-1"></i>สมัครสมาชิก</a>
+              <a class="nav-link" href="register"><i class="bi bi-person-add me-1"></i>สมัครสมาชิก</a>
             </li>
           <?php endif; ?>
         </ul>
@@ -136,12 +183,13 @@ function getRemoveBgCredits($key)
           </div>
 
           <form id="updateApiKeyForm">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"> <!-- เพิ่มบรรทัดนี้ -->
             <div class="mb-3">
               <label for="newApiKey" class="form-label fw-bold">เปลี่ยน API Key ใหม่</label>
-              <input type="text" class="form-control" id="newApiKey" placeholder="ใส่ API Key จาก https://www.remove.bg">
+              <input type="text" class="form-control" id="newApiKey" name="new_key" placeholder="ใส่ API Key จาก https://www.remove.bg" required>
             </div>
 
-            <a href="https://www.remove.bg/dashboard#api-key" target="_blank">รับAPI Keys ที่นี่</a>
+            <a href="https://www.remove.bg/dashboard#api-key" target="_blank">รับ API Key ที่นี่</a>
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">
@@ -152,6 +200,7 @@ function getRemoveBgCredits($key)
       </div>
     </div>
   </div>
+  <script src="<?= asset_url('assets/js/removebg.js') ?>"></script>
 </body>
 
 </html>

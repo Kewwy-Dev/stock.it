@@ -104,3 +104,29 @@ function handleFormSubmit(formId, successRedirect = true) {
 // เรียกใช้ทั้งสองฟอร์ม
 handleFormSubmit("profileForm", true);
 handleFormSubmit("changePasswordForm", true);
+
+// Dropdown แผนกในโปรไฟล์
+document.addEventListener("click", function (e) {
+  const item = e.target.closest(".dept-select");
+  if (!item) return;
+  e.preventDefault();
+
+  const dropdown = item.closest(".dropdown");
+  if (!dropdown) return;
+
+  const menu = item.closest(".dropdown-menu");
+  if (menu) {
+    menu.querySelectorAll(".dropdown-item").forEach((el) => {
+      el.classList.remove("active");
+    });
+  }
+
+  item.classList.add("active");
+
+  const value = item.dataset.value || "";
+  const label = dropdown.querySelector(".dept-label");
+  const input = dropdown.querySelector(".dept-input");
+
+  if (input) input.value = value;
+  if (label) label.textContent = item.textContent.trim();
+});

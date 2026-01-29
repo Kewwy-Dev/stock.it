@@ -145,9 +145,12 @@
     }
 
     .transaction-scroll-container {
-      max-height: 380px;
-      overflow-y: auto;
+      max-height: 420px;              /* ปรับตามที่ต้องการ 380–450px เหมาะกับส่วนใหญ่ */
+      overflow-y: auto;               /* เลื่อนแนวตั้งเมื่อล้น */
       overflow-x: hidden;
+      border: 1px solid #e9ecef;      /* เพิ่มเส้นขอบเบา ๆ เพื่อให้เห็นขอบเขตชัด */
+      border-radius: 8px;
+      background-color: #ffffff;
     }
 
     .transaction-table {
@@ -160,7 +163,7 @@
       font-weight: 600;
       color: #495057;
       font-size: 0.95rem;
-      padding: 1rem 0.8rem;
+      padding: 0.8rem 0.8rem;
       text-align: center !important;
       vertical-align: middle;
       position: sticky;
@@ -171,7 +174,7 @@
     .transaction-table tbody td {
       padding: 1rem 0.8rem;
       vertical-align: middle;
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
 
     .transaction-table .col-type { text-align: center; min-width: 110px; }
@@ -184,7 +187,7 @@
       font-size: 0.85rem;
       padding: 0.5rem 1rem;
       border-radius: 50px;
-      min-width: 90px;
+      min-width: 80px;
       display: inline-block;
     }
 
@@ -203,15 +206,31 @@
 
     @media (max-width: 576px) {
       .page-title { font-size: 1.6rem; }
-      .stat-number { font-size: 1.8rem; }
-      .stat-icon { font-size: 2rem; }
-      .range-btn { padding: 0.5rem 1rem; font-size: 0.9rem; }
-      .stats-grid { gap: 1rem; }
+      .stat-number { font-size: 1.3rem; }
+      .stat-icon { font-size: 1.5rem; }
+      .range-btn { padding: 0.5rem 1rem; font-size: 1rem; }
+      .stats-grid { gap: 1rem; grid-template-columns: repeat(2, 1fr);}
       .stat-card { padding: 1.2rem; }
+      .badge-in,
+      .badge-out{
+        min-width: 80px;
+        font-size: 0.8rem;
+      }
       .transaction-table thead th,
       .transaction-table tbody td {
-        padding: 0.8rem 0.1rem;
-        font-size: 0.65rem;
+        padding: 1rem 0.2rem;
+        font-size: 0.8rem;
       }
-      .transaction-scroll-container { max-height: 300px; }
+      .transaction-table .col-type {
+        text-align: center; 
+        min-width: 110px;
+      }
+      .transaction-table .col-quantity {
+        text-align: center !important; 
+        min-width: 80px; 
+      }
+      .transaction-table .col-date {
+        text-align: center !important; min-width: 90px;
+      }
+      .transaction-scroll-container { max-height: 320px; }
     }

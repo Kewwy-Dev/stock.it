@@ -100,7 +100,7 @@ function initEventListeners() {
       "categoryDropdown",
       "categoryLabel",
       "filterCategory",
-      "— หมวดหมู่สินค้า —",
+      "— —",
     );
   });
 
@@ -111,7 +111,7 @@ function initEventListeners() {
       "itemDropdown",
       "itemLabel",
       "filterItem",
-      "— ค้นหาอุปกรณ์ —",
+      "— —",
     );
   });
 
@@ -128,7 +128,7 @@ function initEventListeners() {
       "companyDropdown",
       "companyLabel",
       "filterCompany",
-      "— ทุกบริษัท —",
+      "— —",
     );
   });
 
@@ -175,15 +175,15 @@ function clearAllFilters() {
     "categoryDropdown",
     "categoryLabel",
     "filterCategory",
-    "— หมวดหมู่สินค้า —",
+    "— —",
   );
-  clearDropdown("itemDropdown", "itemLabel", "filterItem", "— ค้นหาอุปกรณ์ —");
-  clearDropdown("typeDropdown", "typeLabel", "filterType", "— ทุกประเภท —");
+  clearDropdown("itemDropdown", "itemLabel", "filterItem", "— —");
+  clearDropdown("typeDropdown", "typeLabel", "filterType", "— —");
   clearDropdown(
     "companyDropdown",
     "companyLabel",
     "filterCompany",
-    "— ทุกบริษัท —",
+    "— —",
   );
 
   currentPage = 1;
@@ -256,9 +256,16 @@ function render(filtered = data) {
       ? `${esc(r.emp_name)}${r.dept_name ? " (" + esc(r.dept_name) + ")" : ""}`
       : "-";
 
+    const typeText = r.type === "OUT" ? "เบิก" : "เพิ่ม";
+    const typeClass =
+      r.type === "OUT" ? "text-danger bg-danger-subtle" : "text-success bg-success-subtle";
+
     tr.innerHTML = `
-      <td>${formatDate( r.transaction_date || "-")}</td>
+      <td>${formatDate(r.transaction_date || "-")}</td>
       <td>${esc(r.item_name || "-")}</td>
+      <td class="text-center">
+        <span class="badge ${typeClass}">${typeText}</span>
+      </td>
       <td class="text-center">${formatNum(r.quantity)}</td>
       <td class="text-center">${formatNum(r.current_stock_after || r.stock || "-")}</td>
       <td>${emp}</td>
@@ -442,29 +449,49 @@ document.addEventListener("click", function (e) {
     showCancelButton: true,
     confirmButtonColor: "#dc3545",
     cancelButtonColor: "#6c757d",
-    confirmButtonText: '<i class="bi bi-trash-fill me-2"></i>ลบถาวร',
-    cancelButtonText: '<i class="bi bi-x-circle me-1"></i>ยกเลิก',
+    confirmButtonText: '<i class="bi bi-trash-fill me-2"></i>ยืนยัน',
+    cancelButtonText: 'ยกเลิก',
     reverseButtons: true,
-  }).then((result) => {
-    if (result.isConfirmed) {
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = "history.php";
+  }).then(async (result) => {
+    if (!result.isConfirmed) return;
 
-      const csrf = document.createElement("input");
-      csrf.type = "hidden";
-      csrf.name = "csrf_token";
-      csrf.value = window.csrfToken || "";
+    try {
+      const response = await fetch("history.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "application/json",
+        },
+        body: `delete_id=${encodeURIComponent(id)}&csrf_token=${encodeURIComponent(
+          window.csrfToken || "",
+        )}`,
+      });
 
-      const delInput = document.createElement("input");
-      delInput.type = "hidden";
-      delInput.name = "delete_id";
-      delInput.value = id;
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "ลบไม่สำเร็จ");
+      }
 
-      form.appendChild(csrf);
-      form.appendChild(delInput);
-      document.body.appendChild(form);
-      form.submit();
+      data = data.filter((t) => String(t.id) !== String(id));
+
+      const filtered = getFilteredData();
+      const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      render(filtered);
+      Toast.fire({
+        icon: "success",
+        title: "ลบรายการเรียบร้อย",
+        background: "#a5dc86",
+      });
+    } catch (err) {
+      Toast.fire({
+        icon: "error",
+        title: "ลบไม่สำเร็จ",
+        text: err.message,
+        background: "#f27474",
+      });
     }
   });
 });

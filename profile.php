@@ -4,6 +4,7 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/asset_helper.php';
 
 session_start();
 
@@ -33,6 +34,10 @@ if (!$user || !is_array($user)) {
 
 // ดึงรายชื่อแผนก
 $departments = $pdo->query("SELECT id, name FROM departments ORDER BY name")->fetchAll();
+$dept_map = [];
+foreach ($departments as $d) {
+    $dept_map[$d['id']] = $d['name'];
+}
 
 // จัดการ POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -134,10 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ข้อมูลส่วนตัว - Stock-IT</title>
+    <title>Stock-IT • ข้อมูลส่วนตัว</title>
+    <link rel="icon" type="image/png" href="uploads/Stock-IT.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/profile.css">
+    <link rel="stylesheet" href="<?= asset_url('assets/css/profile.css') ?>">
 
 </head>
 
@@ -196,14 +202,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                                 <div class="mb-2">
                                     <label class="form-label">แผนก</label>
-                                    <select name="department_id" class="form-select">
-                                        <option value="">— ไม่ระบุแผนก —</option>
-                                        <?php foreach ($departments as $d): ?>
-                                            <option value="<?= $d['id'] ?>" <?= $d['id'] == ($user['department_id'] ?? '') ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($d['name']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <div class="dropdown">
+                                        <button class="btn btn-white border d-flex align-items-center justify-content-between gap-2 custom-filter-btn w-100"
+                                            type="button" data-bs-toggle="dropdown">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bi bi-diagram-3-fill text-primary"></i>
+                                                <span class="dept-label">
+                                                    <?= htmlspecialchars($dept_map[$user['department_id']] ?? '— ไม่ระบุแผนก —') ?>
+                                                </span>
+                                            </div>
+                                            <i class="bi bi-chevron-down small text-muted"></i>
+                                        </button>
+                                        <ul class="dropdown-menu shadow animate-slide w-100">
+                                            <li><a class="dropdown-item dept-select active" href="#" data-value="">— ไม่ระบุแผนก —</a></li>
+                                            <li>
+                                                <hr class="dropdown-divider">
+                                            </li>
+                                            <?php foreach ($departments as $d): ?>
+                                                <li>
+                                                    <a class="dropdown-item dept-select <?= $d['id'] == ($user['department_id'] ?? '') ? 'active' : '' ?>"
+                                                        href="#" data-value="<?= $d['id'] ?>">
+                                                        <?= htmlspecialchars($d['name']) ?>
+                                                    </a>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                        <input type="hidden" name="department_id" class="dept-input" value="<?= htmlspecialchars($user['department_id'] ?? '') ?>">
+                                    </div>
                                 </div>
 
                                 <!-- ย้าย input file เข้ามาใน form แต่ยังซ่อนไว้ -->
@@ -264,10 +289,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/profile.js"></script>
+    <script src="<?= asset_url('assets/js/profile.js') ?>"></script>
     <!-- SweetAlert -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="assets/js/toast.js"></script>
+    <script src="<?= asset_url('assets/js/toast.js') ?>"></script>
 </body>
 
 </html>

@@ -16,10 +16,17 @@ function renderCategories() {
 
   allCategories.forEach((cat) => {
     const tr = document.createElement("tr");
+    const count = cat.item_count || 0;
     tr.innerHTML = `
-      <td class="ps-3">${cat.name}</td>
-      <td class="text-center">${cat.item_count || 0}</td>
-      <td class="text-end pe-3 d-flex">
+      <td class="ps-3 category-name-cell">
+        <span class="category-label">ชื่อหมวดหมู่</span>
+        <span class="category-name-text">${cat.name}</span>
+      </td>
+      <td class="text-center category-count-cell">
+        <span class="category-label">จำนวนอุปกรณ์</span>
+        <span class="category-count-text">${count}</span>
+      </td>
+      <td class="text-end d-flex category-actions">
         <button class="btn btn-sm btn-outline-primary me-1 rounded-pill px-2"
           onclick="openCategoryForm('edit', ${cat.id}, '${cat.name.replace(/'/g, "\\'")}')">
           <i class="bi bi-pencil"></i> แก้ไข
@@ -46,7 +53,7 @@ function openCategoryForm(mode, id = 0, name = "") {
   nameInput.value = name;
   title.innerHTML =
     mode === "add"
-      ? '<i class="bi bi-tag me-2"></i>เพิ่มหมวดหมู่ใหม่'
+      ? '<i class="bi bi-grid-fill me-2"></i>เพิ่มหมวดหมู่ใหม่'
       : '<i class="bi bi-pencil-square me-2"></i>แก้ไขหมวดหมู่';
 
   modal.show();
@@ -97,13 +104,13 @@ async function saveCategory() {
 function confirmDeleteCategory(id, name) {
   Swal.fire({
     title: "ยืนยันการลบหมวดหมู่",
-    html: `คุณแน่ใจหรือไม่ว่าต้องการลบ<br><strong>"${name}"</strong> ?<br>
-           <small class="text-danger">การกระทำนี้ไม่สามารถกู้คืนได้</small>`,
+    html: `<strong class="text-danger">"${name}"</strong><br>
+           <small>การกระทำนี้ไม่สามารถกู้คืนได้</small>`,
     icon: "warning",
     showCancelButton: true,
     confirmButtonColor: "#d33",
-    cancelButtonColor: "#3085d6",
-    confirmButtonText: '<i class="bi bi-trash me-1"></i> ลบถาวร',
+    cancelButtonColor: "#6c757d",
+    confirmButtonText: '<i class="bi bi-trash me-1"></i> ยืนยัน',
     cancelButtonText: "ยกเลิก",
     reverseButtons: true,
   }).then((result) => {

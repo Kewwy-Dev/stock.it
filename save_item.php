@@ -121,22 +121,28 @@ try {
 
     $pdo->commit();
 
-    // ส่ง JSON สำหรับ AJAX
-    sendJson([
-        'success'   => true,
-        'is_update' => false,          // เพิ่มบรรทัดนี้
-        'id'        => $id,
-        'item_name' => $name,
-        'message'   => $message
-    ]);
+    // ???????????????????????? JS ???????????????? refresh
+    $stmt = $pdo->prepare("
+        SELECT 
+            i.id, i.name, i.image, i.stock, i.is_favorite,
+            i.category_id,
+            c.name AS category_name
+        FROM items i
+        LEFT JOIN categories c ON i.category_id = c.id
+        WHERE i.id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$id]);
+    $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // ในกรณีแก้ไข
+    // ??? JSON ?????? AJAX
     sendJson([
         'success'   => true,
-        'is_update' => true,           // เพิ่มบรรทัดนี้
+        'is_update' => $is_update,
         'id'        => $id,
         'item_name' => $name,
-        'message'   => $message
+        'message'   => $message,
+        'item'      => $item
     ]);
 } catch (Exception $e) {
     $pdo->rollBack();

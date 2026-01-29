@@ -54,10 +54,11 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Stock-IT</title>
+  <link rel="icon" type="image/png" href="uploads/Stock-IT.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/index.css">
+  <link rel="stylesheet" href="<?= asset_url('assets/css/index.css') ?>">
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
   <style>
 
@@ -79,7 +80,7 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
               type="button" id="categoryDropdown" data-bs-toggle="dropdown">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-grid-fill text-primary"></i>
-                <span id="categoryLabel">หมวดหมู่สินค้า</span>
+                <span id="categoryLabel">หมวดหมู่อุปกรณ์</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
@@ -139,7 +140,7 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
               type="button" id="categoryDropdown" data-bs-toggle="dropdown">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-grid-fill text-primary"></i>
-                <span id="categoryLabel">หมวดหมู่สินค้า</span>
+                <span id="categoryLabel">หมวดหมู่อุปกรณ์</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
@@ -212,24 +213,24 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
     <p class="mt-3 fs-5 text-muted">ไม่พบรายการอุปกรณ์ที่ค้นหา</p>
   </div>
   </div>
-  
+
   <!-- ปุ่มเพิ่มอุปกรณ์ -->
-  <button class="additem_button fab" data-bs-toggle="toolip" title="เพิ่มอุปกรณ์" onclick="openAddModal()"><i class="bi bi-plus-circle fs-5"></i></button>
+  <button class="additem_button fab" data-bs-toggle="toolip" title="เพิ่มอุปกรณ์" onclick="openAddModal()"><i class="bi bi-boxes fs-4"></i></button>
   <!-- ปุ่มเปิด modal จัดการหมวดหมู่ -->
   <button id="#myButton" class="categories_button ctg btn btn-outline-primary mb-3 d-flex align-items-center gap-2"
     data-bs-toggle="modal" data-bs-target="#manageCategoriesModal" data-bs-toggle="toolip" title="จัดการหมวดหมู่">
-    <i class="bi bi-tags-fill fs-5"></i>
+    <i class="bi bi-grid-fill fs-4"></i>
   </button>
 
   <!-- ============================================= -->
   <!-- Modal หลัก : จัดการหมวดหมู่                  -->
   <!-- ============================================= -->
-  <div class="modal fade" id="manageCategoriesModal" tabindex="-1" aria-labelledby="manageCategoriesLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+  <div class="modal fade manage-categories-modal" id="manageCategoriesModal" tabindex="-1" aria-labelledby="manageCategoriesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-md-down">
       <div class="modal-content border-0 shadow-lg rounded-4">
         <div class="modal-header bg-primary text-white rounded-top-4">
           <h5 class="modal-title d-flex align-items-center gap-2" id="manageCategoriesLabel">
-            <i class="bi bi-tags-fill"></i> จัดการหมวดหมู่อุปกรณ์
+            <i class="bi bi-grid-fill"></i> จัดการหมวดหมู่อุปกรณ์
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -260,7 +261,7 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
           <!-- ถ้าไม่มีข้อมูล -->
           <div id="noCategories" class="text-center py-5 text-muted d-none">
             <i class="bi bi-tags display-4 opacity-50"></i>
-            <p class="mt-3">ยังไม่มีหมวดหมู่สินค้า</p>
+            <p class="mt-3">ยังไม่มีหมวดหมู่อุปกรณ์</p>
           </div>
         </div>
 
@@ -278,11 +279,11 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
   <div class="modal fade" id="categoryFormModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-4 border-0 shadow">
-        <div class="modal-header bg-light rounded-top-4">
+        <div class="modal-header bg-primary text-white rounded-top-4">
           <h5 class="modal-title" id="categoryFormTitle">
             <i class="bi bi-tag me-2"></i><span>เพิ่มหมวดหมู่ใหม่</span>
           </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body px-4 py-4">
           <input type="hidden" id="catFormId" value="0">
@@ -304,11 +305,11 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
 
   <!-- Modal เพิ่ม/แก้ไขอุปกรณ์ -->
   <div class="modal fade" id="addItemModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="modalTitle">เพิ่มอุปกรณ์</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form id="itemForm" action="save_item.php" method="post" enctype="multipart/form-data">
@@ -323,12 +324,26 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
 
             <div class="mb-3">
               <label class="form-label">หมวดหมู่</label>
-              <select class="form-select" name="category_id">
-                <option value="">— ไม่ระบุ —</option>
-                <?php foreach ($categories as $cat): ?>
-                  <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
-                <?php endforeach; ?>
-              </select>
+              <div class="dropdown">
+                <button class="btn btn-white border d-flex align-items-center justify-content-between gap-2 custom-filter-btn w-100"
+                  type="button" id="itemCategoryDropdown" data-bs-toggle="dropdown">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-grid-fill text-primary"></i>
+                    <span id="itemCategoryLabel">— ไม่ระบุ —</span>
+                  </div>
+                  <i class="bi bi-chevron-down small text-muted"></i>
+                </button>
+                <ul class="dropdown-menu shadow animate-slide w-100" aria-labelledby="itemCategoryDropdown">
+                  <li><a class="dropdown-item category-select-modal" href="#" data-value="">— ไม่ระบุ —</a></li>
+                  <li>
+                    <hr class="dropdown-divider">
+                  </li>
+                  <?php foreach ($categories as $cat): ?>
+                    <li><a class="dropdown-item category-select-modal" href="#" data-value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></a></li>
+                  <?php endforeach; ?>
+                </ul>
+                <input type="hidden" name="category_id" id="itemCategoryValue" value="">
+              </div>
             </div>
 
             <div class="mb-3">
@@ -350,9 +365,12 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
               <input type="number" class="form-control" name="stock" min="0" value="0">
             </div>
 
-            <button type="submit" class="btn btn-primary" id="submitItemBtn">
-              <i class="bi bi-floppy me-1"></i>บันทึก
-            </button>
+            <div class="text-end">
+              <button type="button" class="btn btn-secondary me-1" data-bs-dismiss="modal">ยกเลิก</button>
+              <button type="submit" class="btn btn-primary" id="submitItemBtn">
+                <i class="bi bi-floppy me-1"></i>บันทึก
+              </button>
+            </div>
             <button type="button" class="btn btn-secondary ms-2" id="processingBtn" style="display:none;" disabled>
               <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
               กำลังลบพื้นหลัง...
@@ -365,11 +383,11 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
 
   <!-- Modal เพิ่ม/เบิก -->
   <div class="modal fade" id="transactionModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="transTitle">เพิ่มสต็อก</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form action="save_transaction.php" method="post">
@@ -391,31 +409,72 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
             <div id="outSection" style="display:none;">
               <div class="mb-3">
                 <label class="form-label">บริษัท</label>
-                <select class="form-select" name="company_id">
-                  <option value="">— ไม่ระบุ —</option>
-                  <?php foreach ($companies as $c): ?>
-                    <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
-                  <?php endforeach; ?>
-                </select>
+                <div class="dropdown">
+                  <button class="btn btn-white border d-flex align-items-center justify-content-between gap-2 custom-filter-btn w-100"
+                    type="button" id="companyDropdown" data-bs-toggle="dropdown">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-building text-primary"></i>
+                      <span id="companyLabel">— ไม่ระบุ —</span>
+                    </div>
+                    <i class="bi bi-chevron-down small text-muted"></i>
+                  </button>
+                  <ul class="dropdown-menu shadow animate-slide w-100" aria-labelledby="companyDropdown">
+                    <li><a class="dropdown-item company-select-modal" href="#" data-value="">— ไม่ระบุ —</a></li>
+                    <li>
+                      <hr class="dropdown-divider">
+                    </li>
+                    <?php foreach ($companies as $c): ?>
+                      <li><a class="dropdown-item company-select-modal" href="#" data-value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></a></li>
+                    <?php endforeach; ?>
+                  </ul>
+                  <input type="hidden" id="company_id" name="company_id" value="">
+                </div>
               </div>
               <div class="mb-3">
                 <label class="form-label">แผนก</label>
-                <select id="departmentSelect" class="form-select">
-                  <option value="">— เลือกแผนก —</option>
-                  <?php foreach ($departments as $d): ?>
-                    <option value="<?= $d['id'] ?>"><?= $d['name'] ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <input type="hidden" id="department_id" name="department_id">
+                <div class="dropdown">
+                  <button class="btn btn-white border d-flex align-items-center justify-content-between gap-2 custom-filter-btn w-100"
+                    type="button" id="departmentDropdown" data-bs-toggle="dropdown">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-diagram-3-fill text-primary"></i>
+                      <span id="departmentLabel">— เลือกแผนก —</span>
+                    </div>
+                    <i class="bi bi-chevron-down small text-muted"></i>
+                  </button>
+                  <ul class="dropdown-menu shadow animate-slide w-100" aria-labelledby="departmentDropdown">
+                    <li><a class="dropdown-item department-select-modal" href="#" data-value="">— เลือกแผนก —</a></li>
+                    <li>
+                      <hr class="dropdown-divider">
+                    </li>
+                    <?php foreach ($departments as $d): ?>
+                      <li><a class="dropdown-item department-select-modal" href="#" data-value="<?= $d['id'] ?>"><?= htmlspecialchars($d['name']) ?></a></li>
+                    <?php endforeach; ?>
+                  </ul>
+                  <input type="hidden" id="department_id" name="department_id" value="">
+                </div>
               </div>
               <div class="mb-3">
                 <label class="form-label">ผู้เบิก</label>
-                <select id="employeeSelect" class="form-select" name="employee_id" disabled>
-                  <option value="">— เลือกผู้เบิก —</option>
-                </select>
+                <div class="dropdown">
+                  <button class="btn btn-white border d-flex align-items-center justify-content-between gap-2 custom-filter-btn w-100"
+                    type="button" id="employeeDropdown" data-bs-toggle="dropdown" disabled>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-person-badge-fill text-primary"></i>
+                      <span id="employeeLabel">— เลือกผู้เบิก —</span>
+                    </div>
+                    <i class="bi bi-chevron-down small text-muted"></i>
+                  </button>
+                  <ul class="dropdown-menu shadow animate-slide w-100" aria-labelledby="employeeDropdown" id="employeeMenu">
+                    <li><span class="dropdown-item text-muted">— เลือกแผนกก่อน —</span></li>
+                  </ul>
+                  <input type="hidden" id="employee_id" name="employee_id" value="">
+                </div>
               </div>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-floppy me-1"></i>บันทึก</button>
+            <div class="text-end">
+              <button type="button" class="btn btn-secondary me-1" data-bs-dismiss="modal">ยกเลิก</button>
+              <button type="submit" class="btn btn-primary"><i class="bi bi-floppy me-1"></i>บันทึก</button>
+            </div>
           </form>
         </div>
       </div>
@@ -436,9 +495,9 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
     let categories = <?= json_encode($categories ?? [], JSON_UNESCAPED_UNICODE) ?>;
   </script>
   <!-- โหลดไฟล์ JS แยก -->
-  <script src="assets/js/toast.js"></script>
-  <script src="assets/js/index.js"></script>
-  <script src="assets/js/categories.js"></script>
+  <script src="<?= asset_url('assets/js/toast.js') ?>"></script>
+  <script src="<?= asset_url('assets/js/index.js') ?>"></script>
+  <script src="<?= asset_url('assets/js/categories.js') ?>"></script>
 </body>
 
 </html>

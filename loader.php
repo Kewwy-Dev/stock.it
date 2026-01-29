@@ -5,7 +5,7 @@ if (empty($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
-$redirect_url = ($_SESSION['user_role'] === 'admin') ? 'dashboard.php' : 'newuser.php';
+$redirect_url = ($_SESSION['user_role'] === 'admin') ? 'dashboard' : 'newuser';
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -17,7 +17,7 @@ $redirect_url = ($_SESSION['user_role'] === 'admin') ? 'dashboard.php' : 'newuse
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="assets/css/loader.css">
+    <link rel="stylesheet" href="<?= asset_url('assets/css/loader.css') ?>">
 </head>
 
 <body>
@@ -41,7 +41,7 @@ $redirect_url = ($_SESSION['user_role'] === 'admin') ? 'dashboard.php' : 'newuse
         window.redirectUrl = <?= json_encode($redirect_url) ?>;
     </script>
 
-    <script src="assets/js/loader.js">
+    <script src="<?= asset_url('assets/js/loader.js') ?>">
     </script>
 </body>
 
