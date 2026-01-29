@@ -2,11 +2,11 @@
 require_once __DIR__ . '/bootstrap.php';
 
 if (empty($_SESSION['user_id'])) {
-  header('Location: login.php');
+  header('Location: login');
   exit;
 }
 if ($_SESSION['user_role'] !== 'admin') {
-  header('Location: newuser.php');
+  header('Location: newuser');
   exit;
 }
 
@@ -311,7 +311,7 @@ if (isset($_GET['ajax'])) {
 
     <!-- สถิติหลัก - แก้โครงสร้างให้ถูกต้องและคลิกได้ -->
     <div class="stats-grid">
-      <a href="index.php" class="stat-card-link">
+      <a href="index" class="stat-card-link">
         <div class="stat-card primary">
           <div class="stat-icon text-primary"><i class="bi bi-box-seam-fill px-3 py-2 bg-primary-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_items) ?></div>
@@ -319,7 +319,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </a>
 
-      <a href="index.php?filter=low" class="stat-card-link">
+      <a href="index?filter=low" class="stat-card-link">
         <div class="stat-card warning">
           <div class="stat-icon text-warning"><i class="bi bi-exclamation-triangle-fill px-3 py-2 bg-warning-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($low_stock) ?></div>
@@ -327,7 +327,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </a>
 
-      <a href="index.php?filter=zero" class="stat-card-link">
+      <a href="index?filter=zero" class="stat-card-link">
         <div class="stat-card danger">
           <div class="stat-icon text-danger"><i class="bi bi-slash-circle-fill px-3 py-2 bg-danger-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($out_of_stock) ?></div>
@@ -335,7 +335,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </a>
 
-      <a href="history.php" class="stat-card-link">
+      <a href="history" class="stat-card-link">
         <div class="stat-card dark">
           <div class="stat-icon text-dark"><i class="bi bi-clock-history px-3 py-2 bg-dark-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_history) ?></div>
@@ -343,7 +343,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </a>
 
-      <a href="manage_employees.php" class="stat-card-link">
+      <a href="manage_employees" class="stat-card-link">
         <div class="stat-card primary">
           <div class="stat-icon text-primary"><i class="bi bi-diagram-3-fill px-3 py-2 bg-primary-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_departments) ?></div>
@@ -351,7 +351,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </a>
 
-      <a href="manage_employees.php" class="stat-card-link">
+      <a href="manage_employees" class="stat-card-link">
         <div class="stat-card info">
           <div class="stat-icon text-info"><i class="bi bi-building-fill px-3 py-2 bg-info-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_companies) ?></div>
@@ -359,7 +359,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </a>
 
-      <a href="manage_employees.php" class="stat-card-link">
+      <a href="manage_employees" class="stat-card-link">
         <div class="stat-card success">
           <div class="stat-icon text-success"><i class="bi bi-people-fill px-3 py-2 bg-success-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_employees) ?></div>
@@ -367,7 +367,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </a>
 
-      <a href="manage_users.php" class="stat-card-link">
+      <a href="manage_users" class="stat-card-link">
         <div class="stat-card dark">
           <div class="stat-icon text-secondary"><i class="bi bi-person-fill px-3 py-2 bg-secondary-subtle rounded-4"></i></div>
           <div class="stat-number"><?= number_format($total_users) ?></div>

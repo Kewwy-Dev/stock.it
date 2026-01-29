@@ -9,11 +9,11 @@ require_once __DIR__ . '/includes/asset_helper.php';
 session_start();
 
 if (empty($_SESSION['user_id'])) {
-  header('Location: login.php');
+  header('Location: login');
   exit;
 }
 if ($_SESSION['user_role'] !== 'admin') {
-  header('Location: newuser.php');
+  header('Location: newuser');
   exit;
 }
 
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       json_response(false, 'Invalid CSRF token');
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
-    header("Location: manage_employees.php");
+    header("Location: manage_employees");
     exit;
   }
 
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       json_response(false, 'กรุณากรอกชื่อพนักงาน');
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกชื่อพนักงาน'];
-    header("Location: manage_employees.php");
+    header("Location: manage_employees");
     exit;
   }
 
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
         json_response(false, "ชื่อ {$name} (แผนกนี้) มีอยู่แล้วในระบบ");
       }
       $_SESSION['toast'] = ['type' => 'error', 'message' => "ชื่อ <strong>$name</strong> (แผนกนี้) มีอยู่แล้วในระบบ"];
-      header("Location: manage_employees.php");
+      header("Location: manage_employees");
       exit;
     }
   }
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       $stmt->execute([$name, $department_id]);
       $new_id = (int)$pdo->lastInsertId();
       if ($is_ajax) {
-        json_response(true, "เพิ่มพนักงาน {$name} เรียบร้อย", [
+        json_response(true, "เพิ่มพนักงานเรียบร้อย", [
           'employee' => [
             'id' => $new_id,
             'name' => $name,
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       $stmt = $pdo->prepare("UPDATE employees SET name = ?, department_id = ? WHERE id = ?");
       $stmt->execute([$name, $department_id, $id]);
       if ($is_ajax) {
-        json_response(true, "แก้ไขข้อมูลพนักงาน {$name} เรียบร้อย", [
+        json_response(true, "แก้ไขข้อมูลพนักงานเรียบร้อย", [
           'employee' => [
             'id' => $id,
             'name' => $name,
@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
     $_SESSION['toast'] = ['type' => 'error', 'message' => "เกิดข้อผิดพลาด: " . $e->getMessage()];
   }
 
-  header("Location: manage_employees.php");
+  header("Location: manage_employees");
   exit;
 }
 // จัดการการลบ (POST)
@@ -191,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
       }
     }
   }
-  header("Location: manage_employees.php");
+  header("Location: manage_employees");
   exit;
 }
 
@@ -226,7 +226,7 @@ if (isset($_POST['add_dept']) && trim($_POST['dept_name']) !== '') {
       }
     }
   }
-  header("Location: manage_employees.php");
+  header("Location: manage_employees");
   exit;
 }
 
@@ -261,7 +261,7 @@ if (isset($_POST['add_company']) && trim($_POST['company_name']) !== '') {
       }
     }
   }
-  header("Location: manage_employees.php");
+  header("Location: manage_employees");
   exit;
 }
 

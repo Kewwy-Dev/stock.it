@@ -9,12 +9,12 @@ require_once __DIR__ . '/includes/asset_helper.php';
 session_start();
 
 if (empty($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: login');
     exit;
 }
 
 if ($_SESSION['user_role'] !== 'admin') {
-    header('Location: newuser.php');
+    header('Location: newuser');
     exit;
 }
 
@@ -28,7 +28,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user || !is_array($user)) {
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่'];
-    header('Location: logout.php');
+    header('Location: logout');
     exit;
 }
 

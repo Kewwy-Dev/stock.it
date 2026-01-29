@@ -2,11 +2,11 @@
 require_once __DIR__ . '/bootstrap.php';
 
 if (empty($_SESSION['user_id'])) {
-  header('Location: login.php');
+  header('Location: login');
   exit;
 }
 if ($_SESSION['user_role'] !== 'admin') {
-  header('Location: newuser.php');
+  header('Location: newuser');
   exit;
 }
 
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     }
   }
   if (!$isAjax) {
-    header('Location: history.php');
+    header('Location: history');
     exit;
   }
 }

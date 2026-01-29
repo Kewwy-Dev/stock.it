@@ -27,7 +27,7 @@ require_once __DIR__ . '/includes/asset_helper.php';
             กรุณาติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งานเพิ่มเติม
         </p>
         
-        <a href="logout.php" class="btn btn-primary btn-back">
+        <a href="logout" class="btn btn-primary btn-back">
             <i class="bi bi-box-arrow-in-left me-2"></i>ออกจากระบบ
         </a>
     </div>

@@ -9,7 +9,7 @@ require_once __DIR__ . '/includes/asset_helper.php';
 session_start();
 
 if (!empty($_SESSION['user_id'])) {
-  header('Location: index.php');
+  header('Location: index');
   exit;
 }
 
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $pdo->prepare("INSERT INTO users (username, password, name, email, role, department_id) VALUES (?, ?, ?, ?, 'user', ?)")
             ->execute([$username, $hashed, $name, $email, $dept_id]);
           $_SESSION['message'] = ['type' => 'success', 'text' => 'สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ'];
-          header('Location: login.php');
+          header('Location: login');
           exit;
         } catch (PDOException $e) {
           if ($e->getCode() == 23000) {
@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
 
       <p class="text-center mt-3 mb-0">
-        มีบัญชีแล้ว? <a href="login.php" class="text-link">เข้าสู่ระบบ</a>
+        มีบัญชีแล้ว? <a href="login" class="text-link">เข้าสู่ระบบ</a>
       </p>
     </div>
   </div>

@@ -2,11 +2,11 @@
 require_once __DIR__ . '/bootstrap.php';
 
 if (empty($_SESSION['user_id'])) {
-  header('Location: login.php');
+  header('Location: login');
   exit;
 }
 if ($_SESSION['user_role'] !== 'admin') {
-  header('Location: newuser.php');
+  header('Location: newuser');
   exit;
 }
 
@@ -312,7 +312,7 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <form id="itemForm" action="save_item.php" method="post" enctype="multipart/form-data">
+          <form id="itemForm" action="save_item" method="post" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" id="itemId" name="id">
             <input type="hidden" id="oldImage" name="old_image">
@@ -390,7 +390,7 @@ $json_employees = json_encode($employees, JSON_UNESCAPED_UNICODE);
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <form action="save_transaction.php" method="post">
+          <form action="save_transaction" method="post">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" id="item_id" name="item_id">
             <input type="hidden" id="type" name="type">

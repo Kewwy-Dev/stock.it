@@ -2,7 +2,7 @@
 require_once __DIR__ . '/bootstrap.php';
 
 if (empty($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: login');
     exit;
 }
 $redirect_url = ($_SESSION['user_role'] === 'admin') ? 'dashboard' : 'newuser';

@@ -27,7 +27,7 @@ $isAjax = (
 
 if (empty($_SESSION['user_id']) || $_SESSION['username'] !== 'admin') {
   $_SESSION['toast'] = ['type' => 'error', 'message' => 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้'];
-  header('Location: index.php');
+  header('Location: index');
   exit;
 }
 
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ((isset($_POST['user_id']) && isset
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
-    header('Location: manage_users.php');
+    header('Location: manage_users');
     exit;
   }
 
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ((isset($_POST['user_id']) && isset
   }
 
 if (!$isAjax) {
-    header('Location: manage_users.php');
+    header('Location: manage_users');
     exit;
   }
 }
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
-    header('Location: manage_users.php');
+    header('Location: manage_users');
     exit;
   }
   $username = trim($_POST['username'] ?? '');
@@ -88,17 +88,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   $password = $_POST['password'] ?? '';
   $dept_id  = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
 
-  // ตรวจสอบข้อมูล
+  // ?????????????
   if (empty($username) || empty($name) || empty($email) || empty($password)) {
-    $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกข้อมูลให้ครบทุกช่อง'];
+    if ($isAjax) {
+      sendJson(['success' => false, 'error' => '????????????????????????????']);
+    }
+    $_SESSION['toast'] = ['type' => 'error', 'message' => '????????????????????????????'];
   } elseif (strlen($password) < 6) {
-    $_SESSION['toast'] = ['type' => 'error', 'message' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'];
+    if ($isAjax) {
+      sendJson(['success' => false, 'error' => '??????????????????????? 6 ????????']);
+    }
+    $_SESSION['toast'] = ['type' => 'error', 'message' => '??????????????????????? 6 ????????'];
   } else {
-    // ตรวจสอบว่า username ซ้ำหรือไม่
+    // ?????????? username ??????????
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
     $stmt->execute([$username]);
     if ($stmt->fetch()) {
-      $_SESSION['toast'] = ['type' => 'error', 'message' => 'ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว'];
+      if ($isAjax) {
+        sendJson(['success' => false, 'error' => '?????????????????????????????']);
+      }
+      $_SESSION['toast'] = ['type' => 'error', 'message' => '?????????????????????????????'];
     } else {
       $hashed = password_hash($password, PASSWORD_DEFAULT);
       $stmt = $pdo->prepare("
@@ -107,16 +116,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ");
       $stmt->execute([$username, $name, $email, $hashed, $dept_id]);
 
-      $_SESSION['toast'] = ['type' => 'success', 'message' => 'สร้างผู้ใช้ใหม่เรียบร้อย'];
+      if ($isAjax) {
+        $newId = (int)$pdo->lastInsertId();
+        sendJson([
+          'success' => true,
+          'user' => [
+            'id' => $newId,
+            'username' => $username,
+            'name' => $name,
+            'email' => $email,
+            'department_id' => $dept_id,
+            'department_name' => $dept_map[$dept_id] ?? null,
+          ],
+        ]);
+      }
+
+      $_SESSION['toast'] = ['type' => 'success', 'message' => '????????????????????????'];
     }
   }
   if (!$isAjax) {
-    header('Location: manage_users.php');
+    header('Location: manage_users');
     exit;
   }
 }
 
 // จัดการลบผู้ใช้
+// ?????????????? (AJAX)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_user') {
+  if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    if ($isAjax) {
+      sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
+    }
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
+    header('Location: manage_users');
+    exit;
+  }
+
+  $deleteId = (int)($_POST['user_id'] ?? 0);
+
+  if ($deleteId === $_SESSION['user_id']) {
+    if ($isAjax) {
+      sendJson(['success' => false, 'error' => '????????????????????']);
+    }
+    $_SESSION['toast'] = ['type' => 'error', 'message' => '????????????????????'];
+  } else {
+    $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
+    $stmt->execute([$deleteId]);
+    $image = $stmt->fetchColumn();
+    if ($image && file_exists('uploads/' . $image)) {
+      unlink('uploads/' . $image);
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+    $stmt->execute([$deleteId]);
+
+    if ($isAjax) {
+      sendJson(['success' => true]);
+    }
+    $_SESSION['toast'] = ['type' => 'success', 'message' => '?????????????????'];
+  }
+  if (!$isAjax) {
+    header('Location: manage_users');
+    exit;
+  }
+}
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
   $deleteId = (int)$_GET['delete'];
 
@@ -136,7 +200,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบผู้ใช้เรียบร้อย'];
   }
   if (!$isAjax) {
-    header('Location: manage_users.php');
+    header('Location: manage_users');
     exit;
   }
 }
@@ -148,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user_id'])) {
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
-    header('Location: manage_users.php');
+    header('Location: manage_users');
     exit;
   }
   $editId = (int)$_POST['edit_user_id'];
@@ -158,15 +222,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user_id'])) {
   $new_pass = $_POST['new_password'] ?? '';
 
   if (empty($name) || empty($email)) {
-    $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกข้อมูลให้ครบ'];
+    if ($isAjax) {
+      sendJson(['success' => false, 'error' => '?????????????????????']);
+    }
+    $_SESSION['toast'] = ['type' => 'error', 'message' => '?????????????????????'];
   } else {
     $updateSql = "UPDATE users SET name = ?, email = ?, department_id = ? WHERE id = ?";
     $updateParams = [$name, $email, $dept_id, $editId];
 
     if (!empty($new_pass)) {
       if (strlen($new_pass) < 6) {
-        $_SESSION['toast'] = ['type' => 'error', 'message' => 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'];
-        header('Location: manage_users.php');
+        if ($isAjax) {
+          sendJson(['success' => false, 'error' => '??????????????????????????? 6 ????????']);
+        }
+        $_SESSION['toast'] = ['type' => 'error', 'message' => '??????????????????????????? 6 ????????'];
+        header('Location: manage_users');
         exit;
       }
       $hashed_new = password_hash($new_pass, PASSWORD_DEFAULT);
@@ -177,10 +247,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user_id'])) {
     $stmt = $pdo->prepare($updateSql);
     $stmt->execute($updateParams);
 
-    $_SESSION['toast'] = ['type' => 'success', 'message' => 'แก้ไขข้อมูลผู้ใช้เรียบร้อย'];
+    if ($isAjax) {
+      $stmt = $pdo->prepare("SELECT id, username, name, email, department_id FROM users WHERE id = ?");
+      $stmt->execute([$editId]);
+      $user = $stmt->fetch();
+      sendJson([
+        'success' => true,
+        'user' => [
+          'id' => (int)$user['id'],
+          'username' => $user['username'],
+          'name' => $user['name'],
+          'email' => $user['email'],
+          'department_id' => $user['department_id'] !== null ? (int)$user['department_id'] : null,
+          'department_name' => $dept_map[$user['department_id']] ?? null,
+        ],
+      ]);
+    }
+
+    $_SESSION['toast'] = ['type' => 'success', 'message' => '??????????????????????????'];
   }
   if (!$isAjax) {
-    header('Location: manage_users.php');
+    header('Location: manage_users');
     exit;
   }
 }
@@ -365,7 +452,7 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
-                          <form method="post">
+                          <form method="post" class="create-user-form">
                             <div class="modal-body p-4">
                               <input type="hidden" name="action" value="create_user">
                               <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
