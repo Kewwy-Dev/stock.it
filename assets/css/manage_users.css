@@ -1,7 +1,8 @@
 body { background: #f8f9fa; }
-    .manage-card { max-width: 1200px; margin: 0.5rem auto; }
-    .table { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .table thead { background: #0d6efd; color: white; }
+.manage-card { max-width: 1200px; margin: 0.5rem auto; }
+.table { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.table thead { background: #0d6efd; color: white; }
+.manage-users-table-wrap { overflow-y: auto; }
     .form-switch .form-check-input { height: 1.5em; width: 3em; }
     .form-switch .form-check-input:focus { box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
     .btn-delete { color: #dc3545; }
@@ -123,13 +124,194 @@ body { background: #f8f9fa; }
       border-radius: 0 0.375rem 0.375rem 0;
     }
 
-    .password-wrapper .toggle-password {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      cursor: pointer;
-      color: #6c757d;
-      font-size: 1.1rem;
-      z-index: 10;
-    }
+.password-wrapper .toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #6c757d;
+  font-size: 1.1rem;
+  z-index: 10;
+}
+
+/* Responsive cards (tablet/mobile) */
+.user-cards {
+  display: none;
+  gap: 0.2rem;
+  overflow-y: auto;
+  align-content: start;
+  grid-auto-rows: auto;
+}
+
+.user-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+.user-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.user-id {
+  font-weight: 700;
+  color: #0d6efd;
+  font-size: 0.85rem;
+  background: #e7f1ff;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.user-avatar {
+  flex: 0 0 auto;
+}
+
+.user-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-username {
+  font-weight: 700;
+  color: #212529;
+  font-size: 1rem;
+}
+
+.user-name {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-top: 2px;
+}
+
+.user-role-badge {
+  white-space: nowrap;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+}
+
+.user-card-toggle {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.user-card-toggle i {
+  transition: transform 0.2s ease;
+}
+
+.user-card-details {
+  margin-top: 0.75rem;
+}
+
+.user-card.open .user-card-toggle i {
+  transform: rotate(180deg);
+}
+
+.badge-admin {
+  background: #e7f1ff;
+  color: #0d6efd;
+}
+
+.badge-user {
+  background: #f1f3f5;
+  color: #495057;
+}
+
+.user-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.user-info-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.user-info-label {
+  min-width: 80px;
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.85rem;
+}
+
+.user-info-value {
+  flex: 1;
+  color: #212529;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.user-card-actions {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 576px) {
+  .manage-card {
+    margin: 0.75rem auto;
+  }
+
+  .manage-users-table-wrap {
+    display: none;
+  }
+
+  .user-card {
+    padding: 0.85rem;
+  }
+
+  .user-info-label {
+    min-width: 70px;
+  }
+
+  .user-cards {
+    display: grid;
+  }
+  .user-card {
+    height: auto;
+    overflow: visible;
+  }
+
+  #noUserCards {
+    display: block;
+  }
+}
+
+@media (min-width: 577px) and (max-width: 991px) {
+  .manage-card {
+    margin: 0.9rem auto;
+  }
+}
+
+@media (min-width: 577px) and (max-width: 1200px) {
+  .manage-users-table-wrap {
+    display: none;
+  }
+  .user-cards {
+    display: grid;
+  }
+  .user-card {
+    min-height: var(--user-card-row-height);
+  }
+  #noUserCards {
+    display: block;
+  }
+}
+
+@media (min-width: 1201px) {
+  .user-cards,
+  #noUserCards {
+    display: none !important;
+  }
+}

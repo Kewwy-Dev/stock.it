@@ -152,7 +152,7 @@ body {
 /* History cards (tablet/mobile) */
 .history-cards {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
 
 .history-card {
@@ -381,7 +381,7 @@ body {
   }
 }
 
-@media (max-width: 991px) {
+@media (max-width: 1200px) {
   .history-table-wrap {
     display: none;
   }
@@ -391,9 +391,15 @@ body {
   .history-export-mobile {
     display: flex;
   }
+  .text-truncate {
+    font-size: 12px;
+  }
+  .dropdown-item {
+    font-size: 12px;
+  }
 }
 
-@media (min-width: 992px) {
+@media (min-width: 1201px) {
   .history-cards,
   #noDataCards {
     display: none !important;

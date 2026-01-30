@@ -394,13 +394,13 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
     <div class="card shadow">
       <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
         <h4 class="mb-0"><i class="bi bi-person-fill-gear me-2"></i>จัดการผู้ใช้</h4>
-        <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#createUserModal">
+        <button type="button" class="btn btn-light create-user-btn" data-bs-toggle="modal" data-bs-target="#createUserModal">
           <i class="bi bi-person-plus me-1"></i> สร้างผู้ใช้ใหม่
         </button>
       </div>
 
       <div class="card-body p-4">
-        <div class="table-responsive">
+        <div class="table-responsive manage-users-table-wrap">
           <table class="table table-hover align-middle">
             <thead>
               <tr>
@@ -457,7 +457,95 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
                       <?php endif; ?>
                     </div>
 
-                    <!-- Modal แก้ไขผู้ใช้ -->
+</td>
+                </tr>
+              <?php endforeach; ?>
+              <?php if (empty($users)): ?>
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-4">ไม่มีผู้ใช้ในระบบ</td>
+                </tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <div id="userCards" class="user-cards">
+          <?php foreach ($users as $row): ?>
+            <?php
+            $deptName = $dept_map[$row['department_id']] ?? '— ไม่ระบุ —';
+            $isAdmin = $row['role'] === 'admin';
+            $modalId = 'editModal' . $row['id'];
+            ?>
+            <div class="user-card" data-user-id="<?= htmlspecialchars($row['id']) ?>">
+              <div class="user-card-header" data-target="#userDetails<?= htmlspecialchars($row['id']) ?>" role="button" aria-expanded="false" aria-controls="userDetails<?= htmlspecialchars($row['id']) ?>">
+                <span class="user-id">#<?= htmlspecialchars($row['id']) ?></span>
+                <div class="user-avatar">
+                  <?php if (!empty($row['profile_image']) && file_exists('uploads/' . $row['profile_image'])): ?>
+                    <img src="uploads/<?= htmlspecialchars($row['profile_image']) ?>" alt="โปรไฟล์" class="profile-thumb">
+                  <?php else: ?>
+                    <div class="profile-placeholder"></div>
+                  <?php endif; ?>
+                </div>
+                <div class="user-main">
+                  <div class="user-username"><?= htmlspecialchars($row['username']) ?></div>
+                  <div class="user-name"><?= htmlspecialchars($row['name']) ?></div>
+                </div>
+                <span class="badge <?= $isAdmin ? 'badge-admin' : 'badge-user' ?> user-role-badge">
+                  <?= $isAdmin ? 'แอดมิน' : 'ผู้ใช้' ?>
+                </span>
+                <button type="button" class="btn btn-link p-0 user-card-toggle" aria-expanded="false" aria-controls="userDetails<?= htmlspecialchars($row['id']) ?>">
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+              </div>
+              <div id="userDetails<?= htmlspecialchars($row['id']) ?>" class="user-card-details collapse">
+                <div class="user-card-body">
+                  <div class="user-info-row">
+                    <div class="user-info-label">อีเมล</div>
+                    <div class="user-info-value user-email"><?= htmlspecialchars($row['email']) ?></div>
+                  </div>
+                  <div class="user-info-row">
+                    <div class="user-info-label">แผนก</div>
+                    <div class="user-info-value user-dept"><?= htmlspecialchars($deptName) ?></div>
+                  </div>
+                </div>
+                <div class="user-card-actions">
+                  <form method="post" class="d-inline role-form">
+                    <input type="hidden" name="action" value="update_role">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
+                    <input type="hidden" name="role" value="user">
+                    <div class="form-switch d-flex align-items-center">
+                      <input class="form-check-input role-toggle" type="checkbox" name="role" value="admin"
+                        <?= $row['role'] === 'admin' ? 'checked' : '' ?>
+                        <?= $row['id'] == $_SESSION['user_id'] ? 'disabled' : '' ?>
+                        >
+                      <span class="ms-2 small text-muted">Admin</span>
+                    </div>
+                  </form>
+                  <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-link p-0 me-2" data-bs-toggle="modal" data-bs-target="#<?= $modalId ?>">
+                      <i class="bi bi-pencil-square fs-5"></i>
+                    </button>
+                    <?php if ($row['id'] != $_SESSION['user_id']): ?>
+                      <button type="button" class="btn btn-link p-0 btn-delete"
+                        data-username="<?= htmlspecialchars($row['username']) ?>"
+                        data-user-id="<?= $row['id'] ?>"
+                        data-csrf="<?= $_SESSION['csrf_token'] ?>">
+                        <i class="bi bi-trash fs-5 text-danger"></i>
+                      </button>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <?php if (empty($users)): ?>
+          <div id="noUserCards" class="text-center text-muted py-4">
+            ไม่พบผู้ใช้ในระบบ
+          </div>
+        <?php endif; ?>
+<?php foreach ($users as $row): ?>
+<!-- Modal แก้ไขผู้ใช้ -->
                     <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1">
                       <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
@@ -539,7 +627,10 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
                       </div>
                     </div>
 
-                    <!-- Modal สร้างผู้ใช้ใหม่ -->
+                                        
+<?php endforeach; ?>
+
+<!-- Modal สร้างผู้ใช้ใหม่ -->
                     <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
                       <div class="modal-dialog modal-dialog-centered modal-lg">
                         <div class="modal-content">
@@ -629,21 +720,14 @@ $users = $pdo->query("SELECT u.id, u.username, u.name, u.email, u.role, u.profil
                       </div>
                     </div>
 
-                  </td>
-                </tr>
-              <?php endforeach; ?>
-              <?php if (empty($users)): ?>
-                <tr>
-                  <td colspan="7" class="text-center text-muted py-4">ไม่มีผู้ใช้ในระบบ</td>
-                </tr>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
+                  
+
+
       </div>
     </div>
   </div>
-  <?php if (isset($_SESSION['toast'])): ?>
+  
+<?php if (isset($_SESSION['toast'])): ?>
     <div id="toast-data"
       data-type="<?= $_SESSION['toast']['type'] ?>"
       data-message="<?= htmlspecialchars(addslashes($_SESSION['toast']['message'])) ?>"
