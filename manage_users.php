@@ -5,6 +5,7 @@ $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/asset_helper.php';
+require_once __DIR__ . '/includes/logger.php';
 
 session_start();
 
@@ -18,6 +19,14 @@ function sendJson($data)
   header('Content-Type: application/json; charset=utf-8');
   echo json_encode($data, JSON_UNESCAPED_UNICODE);
   exit;
+}
+
+function getUsernameById(PDO $pdo, int $id): ?string
+{
+  $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ? LIMIT 1");
+  $stmt->execute([$id]);
+  $username = $stmt->fetchColumn();
+  return $username ? (string)$username : null;
 }
 
 $isAjax = (
@@ -41,6 +50,10 @@ foreach ($departments as $d) {
 // จัดการ POST สำหรับเปลี่ยน role
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ((isset($_POST['user_id']) && isset($_POST['role'])) || (isset($_POST['action']) && $_POST['action'] === 'update_role'))) {
   if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    log_event('users', 'เปลี่ยนสิทธิ์ผู้ใช้ไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => (int)($_POST['user_id'] ?? 0)
+    ]);
     if ($isAjax) {
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
@@ -50,20 +63,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ((isset($_POST['user_id']) && isset
   }
 
   $userId = (int)$_POST['user_id'];
+  $targetUsername = getUsernameById($pdo, $userId);
   $newRole = $_POST['role'] === 'admin' ? 'admin' : 'user';
 
   if ($userId === $_SESSION['user_id']) {
+    log_event('users', 'เปลี่ยนสิทธิ์ผู้ใช้ไม่สำเร็จ: ไม่อนุญาตให้เปลี่ยนสิทธิ์ตนเอง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $userId,
+      'target_username' => $targetUsername
+    ]);
     if ($isAjax) {
-      sendJson(['success' => false, 'error' => '?????????????????????????????????']);
+      sendJson(['success' => false, 'error' => 'ไม่สามารถเปลี่ยนสิทธิ์ตนเองได้']);
     }
-    $_SESSION['toast'] = ['type' => 'error', 'message' => '?????????????????????????????????'];
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'ไม่สามารถเปลี่ยนสิทธิ์ตนเองได้'];
   } else {
     $stmt = $pdo->prepare("UPDATE users SET role = ? WHERE id = ?");
     $stmt->execute([$newRole, $userId]);
+    log_event('users', 'เปลี่ยนสิทธิ์ผู้ใช้สำเร็จ', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $userId,
+      'target_username' => $targetUsername,
+      'role' => $newRole
+    ]);
     if ($isAjax) {
       sendJson(['success' => true, 'role' => $newRole]);
     }
-    $_SESSION['toast'] = ['type' => 'success', 'message' => '??????????????????????????'];
+    $_SESSION['toast'] = ['type' => 'success', 'message' => 'เปลี่ยนสิทธิ์ผู้ใช้เรียบร้อย'];
   }
 
 if (!$isAjax) {
@@ -75,6 +100,10 @@ if (!$isAjax) {
 // จัดการสร้างผู้ใช้ใหม่
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_user') {
   if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    log_event('users', 'สร้างผู้ใช้ไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'username' => $_POST['username'] ?? '-'
+    ]);
     if ($isAjax) {
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
@@ -88,34 +117,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   $password = $_POST['password'] ?? '';
   $dept_id  = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
 
-  // ?????????????
+  // ตรวจสอบข้อมูล
   if (empty($username) || empty($name) || empty($email) || empty($password)) {
+    log_event('users', 'สร้างผู้ใช้ไม่สำเร็จ: กรอกข้อมูลไม่ครบ', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'username' => $username ?: '-'
+    ]);
     if ($isAjax) {
-      sendJson(['success' => false, 'error' => '????????????????????????????']);
+      sendJson(['success' => false, 'error' => 'กรุณากรอกข้อมูลให้ครบ']);
     }
-    $_SESSION['toast'] = ['type' => 'error', 'message' => '????????????????????????????'];
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกข้อมูลให้ครบ'];
   } elseif (strlen($password) < 6) {
+    log_event('users', 'สร้างผู้ใช้ไม่สำเร็จ: รหัสผ่านสั้นเกินไป', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'username' => $username ?: '-'
+    ]);
     if ($isAjax) {
-      sendJson(['success' => false, 'error' => '??????????????????????? 6 ????????']);
+      sendJson(['success' => false, 'error' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร']);
     }
-    $_SESSION['toast'] = ['type' => 'error', 'message' => '??????????????????????? 6 ????????'];
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'];
   } else {
-    // ?????????? username ??????????
+    // ตรวจสอบ username ซ้ำ
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
     $stmt->execute([$username]);
     if ($stmt->fetch()) {
+      log_event('users', 'สร้างผู้ใช้ไม่สำเร็จ: ชื่อผู้ใช้ซ้ำ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'username' => $username ?: '-'
+      ]);
       if ($isAjax) {
-        sendJson(['success' => false, 'error' => '?????????????????????????????']);
+        sendJson(['success' => false, 'error' => 'ชื่อผู้ใช้นี้มีอยู่แล้ว']);
       }
-      $_SESSION['toast'] = ['type' => 'error', 'message' => '?????????????????????????????'];
+      $_SESSION['toast'] = ['type' => 'error', 'message' => 'ชื่อผู้ใช้นี้มีอยู่แล้ว'];
     } else {
       $hashed = password_hash($password, PASSWORD_DEFAULT);
       $stmt = $pdo->prepare("
                 INSERT INTO users (username, name, email, password, role, department_id, created_at)
                 VALUES (?, ?, ?, ?, 'user', ?, NOW())
-            ");
+      ");
       $stmt->execute([$username, $name, $email, $hashed, $dept_id]);
 
+      log_event('users', 'สร้างผู้ใช้สำเร็จ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'username' => $username,
+        'email' => $email,
+        'department_id' => $dept_id,
+        'department_name' => $dept_map[$dept_id] ?? null
+      ]);
       if ($isAjax) {
         $newId = (int)$pdo->lastInsertId();
         sendJson([
@@ -131,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ]);
       }
 
-      $_SESSION['toast'] = ['type' => 'success', 'message' => '????????????????????????'];
+      $_SESSION['toast'] = ['type' => 'success', 'message' => 'สร้างผู้ใช้เรียบร้อย'];
     }
   }
   if (!$isAjax) {
@@ -141,9 +189,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // จัดการลบผู้ใช้
-// ?????????????? (AJAX)
+// ลบผู้ใช้ (AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_user') {
   if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    log_event('users', 'ลบผู้ใช้ไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => (int)($_POST['user_id'] ?? 0)
+    ]);
     if ($isAjax) {
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
@@ -153,38 +205,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   }
 
   $deleteId = (int)($_POST['user_id'] ?? 0);
+  $targetUsername = getUsernameById($pdo, $deleteId);
 
   if ($deleteId === $_SESSION['user_id']) {
+    log_event('users', 'ลบผู้ใช้ไม่สำเร็จ: ไม่อนุญาตให้ลบตนเอง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $deleteId,
+      'target_username' => $targetUsername
+    ]);
     if ($isAjax) {
-      sendJson(['success' => false, 'error' => '????????????????????']);
+      sendJson(['success' => false, 'error' => 'ไม่สามารถลบตัวเองได้']);
     }
-    $_SESSION['toast'] = ['type' => 'error', 'message' => '????????????????????'];
-  } else {
-    $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
-    $stmt->execute([$deleteId]);
-    $image = $stmt->fetchColumn();
-    if ($image && file_exists('uploads/' . $image)) {
-      unlink('uploads/' . $image);
-    }
-
-    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-    $stmt->execute([$deleteId]);
-
-    if ($isAjax) {
-      sendJson(['success' => true]);
-    }
-    $_SESSION['toast'] = ['type' => 'success', 'message' => '?????????????????'];
-  }
-  if (!$isAjax) {
-    header('Location: manage_users');
-    exit;
-  }
-}
-
-if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-  $deleteId = (int)$_GET['delete'];
-
-  if ($deleteId === $_SESSION['user_id']) {
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'ไม่สามารถลบตัวเองได้'];
   } else {
     $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
@@ -197,7 +228,50 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
     $stmt->execute([$deleteId]);
 
+    log_event('users', 'ลบผู้ใช้สำเร็จ', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $deleteId,
+      'target_username' => $targetUsername
+    ]);
+    if ($isAjax) {
+      sendJson(['success' => true]);
+    }
     $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบผู้ใช้เรียบร้อย'];
+  }
+  if (!$isAjax) {
+    header('Location: manage_users');
+    exit;
+  }
+}
+
+if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
+  $deleteId = (int)$_GET['delete'];
+  $targetUsername = getUsernameById($pdo, $deleteId);
+
+  if ($deleteId === $_SESSION['user_id']) {
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'ไม่สามารถลบตัวเองได้'];
+    log_event('users', 'ลบผู้ใช้ไม่สำเร็จ: ไม่อนุญาตให้ลบตนเอง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $deleteId,
+      'target_username' => $targetUsername
+    ]);
+  } else {
+    $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
+    $stmt->execute([$deleteId]);
+    $image = $stmt->fetchColumn();
+    if ($image && file_exists('uploads/' . $image)) {
+      unlink('uploads/' . $image);
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+    $stmt->execute([$deleteId]);
+
+    $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบผู้ใช้เรียบร้อย'];
+    log_event('users', 'ลบผู้ใช้สำเร็จ', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $deleteId,
+      'target_username' => $targetUsername
+    ]);
   }
   if (!$isAjax) {
     header('Location: manage_users');
@@ -208,6 +282,10 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 // จัดการแก้ไขผู้ใช้
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user_id'])) {
   if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    log_event('users', 'แก้ไขผู้ใช้ไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => (int)($_POST['edit_user_id'] ?? 0)
+    ]);
     if ($isAjax) {
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
@@ -216,26 +294,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user_id'])) {
     exit;
   }
   $editId = (int)$_POST['edit_user_id'];
+  $targetUsername = getUsernameById($pdo, $editId);
   $name = trim($_POST['name'] ?? '');
   $email = trim($_POST['email'] ?? '');
   $dept_id = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
   $new_pass = $_POST['new_password'] ?? '';
 
   if (empty($name) || empty($email)) {
+    log_event('users', 'แก้ไขผู้ใช้ไม่สำเร็จ: กรอกข้อมูลไม่ครบ', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $editId,
+      'target_username' => $targetUsername
+    ]);
     if ($isAjax) {
-      sendJson(['success' => false, 'error' => '?????????????????????']);
+      sendJson(['success' => false, 'error' => 'กรุณากรอกข้อมูลให้ครบ']);
     }
-    $_SESSION['toast'] = ['type' => 'error', 'message' => '?????????????????????'];
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกข้อมูลให้ครบ'];
   } else {
     $updateSql = "UPDATE users SET name = ?, email = ?, department_id = ? WHERE id = ?";
     $updateParams = [$name, $email, $dept_id, $editId];
 
     if (!empty($new_pass)) {
       if (strlen($new_pass) < 6) {
+        log_event('users', 'แก้ไขผู้ใช้ไม่สำเร็จ: รหัสผ่านใหม่สั้นเกินไป', [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'target_user_id' => $editId,
+          'target_username' => $targetUsername
+        ]);
         if ($isAjax) {
-          sendJson(['success' => false, 'error' => '??????????????????????????? 6 ????????']);
+          sendJson(['success' => false, 'error' => 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร']);
         }
-        $_SESSION['toast'] = ['type' => 'error', 'message' => '??????????????????????????? 6 ????????'];
+        $_SESSION['toast'] = ['type' => 'error', 'message' => 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'];
         header('Location: manage_users');
         exit;
       }
@@ -247,6 +336,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user_id'])) {
     $stmt = $pdo->prepare($updateSql);
     $stmt->execute($updateParams);
 
+    log_event('users', 'แก้ไขผู้ใช้สำเร็จ', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'target_user_id' => $editId,
+      'target_username' => $targetUsername,
+      'email' => $email,
+      'department_id' => $dept_id,
+      'department_name' => $dept_map[$dept_id] ?? null
+    ]);
     if ($isAjax) {
       $stmt = $pdo->prepare("SELECT id, username, name, email, department_id FROM users WHERE id = ?");
       $stmt->execute([$editId]);
@@ -264,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user_id'])) {
       ]);
     }
 
-    $_SESSION['toast'] = ['type' => 'success', 'message' => '??????????????????????????'];
+    $_SESSION['toast'] = ['type' => 'success', 'message' => 'แก้ไขผู้ใช้เรียบร้อย'];
   }
   if (!$isAjax) {
     header('Location: manage_users');

@@ -32,6 +32,10 @@ if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
         sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
+    log_event('items', 'ลบอุปกรณ์ไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'item_id' => (int)($_POST['delete_id'] ?? 0)
+    ]);
     header('Location: index.php');
     exit;
 }
@@ -41,9 +45,11 @@ $id = (int)$_POST['delete_id'];
 $pdo->beginTransaction();
 try {
     // ดึงชื่อไฟล์รูปภาพก่อนลบ
-    $stmt = $pdo->prepare("SELECT image FROM items WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT image, name FROM items WHERE id = ?");
     $stmt->execute([$id]);
-    $image = $stmt->fetchColumn();  // ถูกต้อง: ใช้จาก $stmt
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $image = $row['image'] ?? null;
+    $item_name = $row['name'] ?? null;
 
     // ลบรูปภาพ (ถ้ามี)
     if ($image && file_exists('uploads/' . $image)) {
@@ -55,6 +61,12 @@ try {
 
     $pdo->commit();
 
+    log_event('items', 'ลบอุปกรณ์สำเร็จ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'item_id' => $id,
+        'item_name' => $item_name
+    ]);
+
     if ($isAjax) {
         sendJson(['success' => true, 'id' => $id]);
     }
@@ -62,6 +74,11 @@ try {
     $_SESSION['toast'] = ['type' => 'success', 'message' => 'ลบอุปกรณ์เรียบร้อย'];
 } catch (Exception $e) {
     $pdo->rollBack();
+    log_event('items', 'ลบอุปกรณ์ไม่สำเร็จ: ' . $e->getMessage(), [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'item_id' => $id,
+        'item_name' => $item_name ?? null
+    ]);
     if ($isAjax) {
         sendJson(['success' => false, 'error' => 'ลบไม่สำเร็จ: ' . $e->getMessage()]);
     }

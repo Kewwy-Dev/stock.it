@@ -1,10 +1,11 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/asset_helper.php';
+require_once __DIR__ . '/includes/logger.php';
 
 session_start();
 
@@ -47,6 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
         $response = ['success' => false, 'message' => 'Invalid CSRF token'];
+        log_event('profile', 'อัปเดตโปรไฟล์ไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+            'user_id' => $user_id
+        ]);
     } else {
         $action = $_POST['action'] ?? '';
 
@@ -63,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
                 if (!in_array($ext, $allowed) || $_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
                     $response['message'] = 'รูปภาพไม่ถูกต้อง (jpg/png/gif/webp, ไม่เกิน 5MB)';
+                    log_event('profile', 'อัปเดตโปรไฟล์ไม่สำเร็จ: รูปภาพไม่ถูกต้องหรือเกินขนาด', [
+                        'user_id' => $user_id
+                    ]);
                     echo json_encode($response);
                     exit;
                 }
@@ -77,6 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $profile_image = $new_image;
                 } else {
                     $response['message'] = 'อัปโหลดรูปภาพล้มเหลว';
+                    log_event('profile', 'อัปเดตโปรไฟล์ไม่สำเร็จ: อัปโหลดรูปภาพล้มเหลว', [
+                        'user_id' => $user_id
+                    ]);
                     echo json_encode($response);
                     exit;
                 }
@@ -93,8 +103,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'success' => true,
                     'message' => 'อัปเดตข้อมูลส่วนตัวเรียบร้อย'
                 ];
+                log_event('profile', 'อัปเดตโปรไฟล์สำเร็จ', [
+                    'user_id' => $user_id,
+                    'department_id' => $dept_id
+                ]);
             } else {
                 $response['message'] = 'ไม่สามารถอัปเดตข้อมูลได้';
+                log_event('profile', 'อัปเดตโปรไฟล์ไม่สำเร็จ: บันทึกข้อมูลไม่สำเร็จ', [
+                    'user_id' => $user_id
+                ]);
             }
         } elseif ($action === 'change_password') {
             // โค้ดเดิมของคุณ (ดีอยู่แล้ว แค่ปรับให้ส่ง $response เสมอ)
@@ -104,10 +121,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (empty($old_pass) || empty($new_pass) || empty($confirm_pass)) {
                 $response['message'] = 'กรุณากรอกข้อมูลให้ครบ';
+                log_event('change_password', 'เปลี่ยนรหัสผ่านไม่สำเร็จ: ' . $response['message'], [
+                    'user_id' => $user_id
+                ]);
             } elseif ($new_pass !== $confirm_pass) {
                 $response['message'] = 'รหัสผ่านใหม่ไม่ตรงกัน';
+                log_event('change_password', 'เปลี่ยนรหัสผ่านไม่สำเร็จ: ' . $response['message'], [
+                    'user_id' => $user_id
+                ]);
             } elseif (strlen($new_pass) < 6) {
                 $response['message'] = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร';
+                log_event('change_password', 'เปลี่ยนรหัสผ่านไม่สำเร็จ: ' . $response['message'], [
+                    'user_id' => $user_id
+                ]);
             } else {
                 $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
                 $stmt->execute([$user_id]);
@@ -122,8 +148,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'success' => true,
                         'message' => 'เปลี่ยนรหัสผ่านเรียบร้อย'
                     ];
+                    log_event('change_password', 'เปลี่ยนรหัสผ่านสำเร็จ', [
+                        'user_id' => $user_id
+                    ]);
                 } else {
                     $response['message'] = 'รหัสผ่านเก่าไม่ถูกต้อง';
+                    log_event('change_password', 'เปลี่ยนรหัสผ่านไม่สำเร็จ: ' . $response['message'], [
+                        'user_id' => $user_id
+                    ]);
                 }
             }
         }

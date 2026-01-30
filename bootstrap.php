@@ -8,6 +8,7 @@ $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/asset_helper.php';
+require_once __DIR__ . '/includes/logger.php';
 
 // สร้าง CSRF token ถ้ายังไม่มี (ถ้าโปรเจ็กต์ใช้)
 if (empty($_SESSION['csrf_token'])) {

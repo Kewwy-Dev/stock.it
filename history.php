@@ -35,11 +35,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
       sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
+    log_event('history', 'ลบประวัติไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'transaction_id' => (int)($_POST['delete_id'] ?? 0)
+    ]);
   } else {
     $tid = (int)$_POST['delete_id'];
     $pdo->beginTransaction();
     try {
-      $stmt = $pdo->prepare("SELECT item_id, type, quantity FROM stock_transactions WHERE id = ?");
+      $stmt = $pdo->prepare("
+        SELECT t.item_id, t.type, t.quantity, i.name AS item_name
+        FROM stock_transactions t
+        LEFT JOIN items i ON t.item_id = i.id
+        WHERE t.id = ?
+      ");
       $stmt->execute([$tid]);
       $tr = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -49,12 +58,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
           ->execute([$change, $tr['item_id']]);
         $pdo->prepare("DELETE FROM stock_transactions WHERE id = ?")->execute([$tid]);
         $pdo->commit();
+        log_event('history', 'ลบประวัติสำเร็จ', [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'transaction_id' => $tid,
+          'item_id' => $tr['item_id'],
+          'item_name' => $tr['item_name'] ?? null
+        ]);
         if ($isAjax) {
           sendJson(['success' => true, 'id' => $tid]);
         }
         $_SESSION['toast'] = ['type' => 'success', 'message' => '?????????????????????????????'];
       } else {
         $pdo->rollBack();
+        log_event('history', 'ลบประวัติไม่สำเร็จ: ไม่พบรายการ', [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'transaction_id' => $tid
+        ]);
         if ($isAjax) {
           sendJson(['success' => false, 'error' => '???????????']);
         }
@@ -66,6 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         sendJson(['success' => false, 'error' => 'Error: ' . $e->getMessage()]);
       }
       $_SESSION['toast'] = ['type' => 'error', 'message' => 'Error: ' . $e->getMessage()];
+      log_event('history', 'ลบประวัติไม่สำเร็จ: ' . $e->getMessage(), [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'transaction_id' => $tid
+      ]);
     }
   }
   if (!$isAjax) {

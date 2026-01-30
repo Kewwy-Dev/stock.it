@@ -1,10 +1,11 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/asset_helper.php';
+require_once __DIR__ . '/includes/logger.php';
 
 session_start();
 
@@ -19,10 +20,11 @@ if (empty($_SESSION['csrf_token'])) {
 
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $username = trim($_POST['username'] ?? '');
   if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
     $message = ['type' => 'error', 'text' => 'Invalid CSRF token'];
+    log_event('login', 'เข้าสู่ระบบไม่สำเร็จ: CSRF token ไม่ถูกต้อง', ['username' => $username ?: '-']);
   } else {
-    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
     if ($username && $password) {
@@ -35,17 +37,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['username'] = $user['username'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_role'] = $user['role'];
+        log_event('login', 'เข้าสู่ระบบสำเร็จ', [
+          'user_id' => $user['id'],
+          'username' => $user['username'],
+          'role' => $user['role']
+        ]);
         header('Location: loader.php');  // เปลี่ยนเป็น loader.php สำหรับทุก role
         exit;
       } else {
         $message = ['type' => 'error', 'text' => 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'];
+        log_event('login', 'เข้าสู่ระบบไม่สำเร็จ: ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', ['username' => $username ?: '-']);
       }
     } else {
       $message = ['type' => 'error', 'text' => 'กรุณากรอกข้อมูลให้ครบ'];
+      log_event('login', 'เข้าสู่ระบบไม่สำเร็จ: กรอกข้อมูลไม่ครบ', ['username' => $username ?: '-']);
     }
   }
-}
-?>
+}?>
 <!DOCTYPE html>
 <html lang="th">
 
@@ -315,3 +323,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </body>
 
 </html>
+
+
+

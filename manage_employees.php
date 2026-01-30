@@ -5,6 +5,7 @@ $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/asset_helper.php';
+require_once __DIR__ . '/includes/logger.php';
 
 session_start();
 
@@ -58,6 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       json_response(false, 'Invalid CSRF token');
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
+    log_event('employees', 'จัดการพนักงานไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'action' => $_POST['action'] ?? '-'
+    ]);
     header("Location: manage_employees");
     exit;
   }
@@ -70,6 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       json_response(false, 'กรุณากรอกชื่อพนักงาน');
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'กรุณากรอกชื่อพนักงาน'];
+    log_event('employees', 'จัดการพนักงานไม่สำเร็จ: ไม่ระบุชื่อพนักงาน', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest'
+    ]);
     header("Location: manage_employees");
     exit;
   }
@@ -88,6 +96,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
         json_response(false, "ชื่อ {$name} (แผนกนี้) มีอยู่แล้วในระบบ");
       }
       $_SESSION['toast'] = ['type' => 'error', 'message' => "ชื่อ <strong>$name</strong> (แผนกนี้) มีอยู่แล้วในระบบ"];
+      log_event('employees', 'จัดการพนักงานไม่สำเร็จ: ชื่อซ้ำ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'name' => $name,
+        'department_id' => $department_id
+      ]);
       header("Location: manage_employees");
       exit;
     }
@@ -98,6 +111,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       $stmt = $pdo->prepare("INSERT INTO employees (name, department_id) VALUES (?, ?)");
       $stmt->execute([$name, $department_id]);
       $new_id = (int)$pdo->lastInsertId();
+      log_event('employees', 'เพิ่มพนักงานสำเร็จ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'employee_id' => $new_id,
+        'name' => $name,
+        'department_id' => $department_id,
+        'department_name' => $dept_map[$department_id] ?? null
+      ]);
       if ($is_ajax) {
         json_response(true, "เพิ่มพนักงานเรียบร้อย", [
           'employee' => [
@@ -114,6 +134,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       $id = (int)$_POST['id'];
       $stmt = $pdo->prepare("UPDATE employees SET name = ?, department_id = ? WHERE id = ?");
       $stmt->execute([$name, $department_id, $id]);
+      log_event('employees', 'แก้ไขพนักงานสำเร็จ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'employee_id' => $id,
+        'name' => $name,
+        'department_id' => $department_id,
+        'department_name' => $dept_map[$department_id] ?? null
+      ]);
       if ($is_ajax) {
         json_response(true, "แก้ไขข้อมูลพนักงานเรียบร้อย", [
           'employee' => [
@@ -132,13 +159,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
       json_response(false, "เกิดข้อผิดพลาด: " . $e->getMessage());
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => "เกิดข้อผิดพลาด: " . $e->getMessage()];
+    log_event('employees', 'จัดการพนักงานไม่สำเร็จ: ' . $e->getMessage(), [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'action' => $_POST['action'] ?? '-'
+    ]);
   }
 
   header("Location: manage_employees");
   exit;
 }
 // จัดการการลบ (POST)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
   error_log("DELETE REQUEST RECEIVED: " . print_r($_POST, true));
 
   if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
@@ -147,6 +178,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token'];
     error_log("CSRF INVALID");
+    log_event('employees', 'ลบข้อมูลไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest',
+      'type' => $_POST['delete_type'] ?? '-',
+      'id' => (int)($_POST['delete_id'] ?? 0)
+    ]);
   } else {
     $type = $_POST['delete_type'] ?? '';
     $id   = (int)($_POST['delete_id'] ?? 0);
@@ -157,11 +193,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
       }
       $_SESSION['toast'] = ['type' => 'error', 'message' => 'ข้อมูลไม่ถูกต้อง'];
       error_log("INVALID TYPE OR ID");
+      log_event('employees', 'ลบข้อมูลไม่สำเร็จ: ข้อมูลไม่ถูกต้อง', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'type' => $type,
+        'id' => $id
+      ]);
     } else {
+      $target_name = null;
+      $target_dept_name = null;
+      if ($type === 'dept') {
+        $stmtName = $pdo->prepare("SELECT name FROM departments WHERE id = ?");
+        $stmtName->execute([$id]);
+        $target_name = $stmtName->fetchColumn();
+      } elseif ($type === 'company') {
+        $stmtName = $pdo->prepare("SELECT name FROM companies WHERE id = ?");
+        $stmtName->execute([$id]);
+        $target_name = $stmtName->fetchColumn();
+      } elseif ($type === 'emp') {
+        $stmtName = $pdo->prepare("
+          SELECT e.name, d.name AS dept_name
+          FROM employees e
+          LEFT JOIN departments d ON e.department_id = d.id
+          WHERE e.id = ?
+        ");
+        $stmtName->execute([$id]);
+        $row = $stmtName->fetch(PDO::FETCH_ASSOC);
+        $target_name = $row['name'] ?? null;
+        $target_dept_name = $row['dept_name'] ?? null;
+      }
+
       try {
         if ($type === 'dept') {
           $stmt = $pdo->prepare("DELETE FROM departments WHERE id = ?");
           $stmt->execute([$id]);
+          log_event('employees', 'ลบแผนกสำเร็จ', [
+            'user_id' => $_SESSION['user_id'] ?? 'guest',
+            'department_id' => $id,
+            'name' => $target_name
+          ]);
           if ($is_ajax) {
             json_response(true, 'ลบแผนกเรียบร้อย', ['type' => 'dept', 'id' => $id]);
           }
@@ -169,6 +238,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
         } elseif ($type === 'company') {
           $stmt = $pdo->prepare("DELETE FROM companies WHERE id = ?");
           $stmt->execute([$id]);
+          log_event('employees', 'ลบบริษัทสำเร็จ', [
+            'user_id' => $_SESSION['user_id'] ?? 'guest',
+            'company_id' => $id,
+            'name' => $target_name
+          ]);
           if ($is_ajax) {
             json_response(true, 'ลบบริษัทเรียบร้อย', ['type' => 'company', 'id' => $id]);
           }
@@ -176,6 +250,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
         } elseif ($type === 'emp') {
           $stmt = $pdo->prepare("DELETE FROM employees WHERE id = ?");
           $stmt->execute([$id]);
+          log_event('employees', 'ลบพนักงานสำเร็จ', [
+            'user_id' => $_SESSION['user_id'] ?? 'guest',
+            'employee_id' => $id,
+            'name' => $target_name,
+            'department_name' => $target_dept_name
+          ]);
           if ($is_ajax) {
             json_response(true, 'ลบพนักงานเรียบร้อย', ['type' => 'emp', 'id' => $id]);
           }
@@ -188,6 +268,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_type'])) {
         }
         $_SESSION['toast'] = ['type' => 'error', 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()];
         error_log("DELETE ERROR: " . $e->getMessage());
+        log_event('employees', 'ลบข้อมูลไม่สำเร็จ: ' . $e->getMessage(), [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'type' => $type,
+          'id' => $id
+        ]);
       }
     }
   }
@@ -202,12 +287,20 @@ if (isset($_POST['add_dept']) && trim($_POST['dept_name']) !== '') {
       json_response(false, 'Invalid CSRF token (เพิ่มแผนก)');
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token (เพิ่มแผนก)'];
+    log_event('employees', 'เพิ่มแผนกไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest'
+    ]);
   } else {
     $name = trim($_POST['dept_name']);
     try {
       $stmt = $pdo->prepare("INSERT INTO departments (name) VALUES (?)");
       $stmt->execute([$name]);
       $new_id = (int)$pdo->lastInsertId();
+      log_event('employees', 'เพิ่มแผนกสำเร็จ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'department_id' => $new_id,
+        'name' => $name
+      ]);
       if ($is_ajax) {
         json_response(true, "เพิ่มแผนก {$name} เรียบร้อย", ['id' => $new_id, 'name' => $name, 'type' => 'dept']);
       }
@@ -218,11 +311,19 @@ if (isset($_POST['add_dept']) && trim($_POST['dept_name']) !== '') {
           json_response(false, "ชื่อแผนก {$name} มีอยู่แล้ว");
         }
         $_SESSION['toast'] = ['type' => 'error', 'message' => "ชื่อแผนก <strong>$name</strong> มีอยู่แล้ว"];
+        log_event('employees', 'เพิ่มแผนกไม่สำเร็จ: ชื่อซ้ำ', [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'name' => $name
+        ]);
       } else {
         if ($is_ajax) {
           json_response(false, "เกิดข้อผิดพลาดในการเพิ่มแผนก: " . $e->getMessage());
         }
         $_SESSION['toast'] = ['type' => 'error', 'message' => "เกิดข้อผิดพลาดในการเพิ่มแผนก: " . $e->getMessage()];
+        log_event('employees', 'เพิ่มแผนกไม่สำเร็จ: ' . $e->getMessage(), [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'name' => $name
+        ]);
       }
     }
   }
@@ -237,12 +338,20 @@ if (isset($_POST['add_company']) && trim($_POST['company_name']) !== '') {
       json_response(false, 'Invalid CSRF token (เพิ่มบริษัท)');
     }
     $_SESSION['toast'] = ['type' => 'error', 'message' => 'Invalid CSRF token (เพิ่มบริษัท)'];
+    log_event('employees', 'เพิ่มบริษัทไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'user_id' => $_SESSION['user_id'] ?? 'guest'
+    ]);
   } else {
     $name = trim($_POST['company_name']);
     try {
       $stmt = $pdo->prepare("INSERT INTO companies (name) VALUES (?)");
       $stmt->execute([$name]);
       $new_id = (int)$pdo->lastInsertId();
+      log_event('employees', 'เพิ่มบริษัทสำเร็จ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'company_id' => $new_id,
+        'name' => $name
+      ]);
       if ($is_ajax) {
         json_response(true, "เพิ่มบริษัท {$name} เรียบร้อย", ['id' => $new_id, 'name' => $name, 'type' => 'company']);
       }
@@ -253,11 +362,19 @@ if (isset($_POST['add_company']) && trim($_POST['company_name']) !== '') {
           json_response(false, "ชื่อบริษัท {$name} มีอยู่แล้ว");
         }
         $_SESSION['toast'] = ['type' => 'error', 'message' => "ชื่อบริษัท <strong>$name</strong> มีอยู่แล้ว"];
+        log_event('employees', 'เพิ่มบริษัทไม่สำเร็จ: ชื่อซ้ำ', [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'name' => $name
+        ]);
       } else {
         if ($is_ajax) {
           json_response(false, "เกิดข้อผิดพลาดในการเพิ่มบริษัท: " . $e->getMessage());
         }
         $_SESSION['toast'] = ['type' => 'error', 'message' => "เกิดข้อผิดพลาดในการเพิ่มบริษัท: " . $e->getMessage()];
+        log_event('employees', 'เพิ่มบริษัทไม่สำเร็จ: ' . $e->getMessage(), [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'name' => $name
+        ]);
       }
     }
   }
@@ -279,6 +396,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       header('Content-Type: application/json; charset=utf-8');
 
       if (!isset($data['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $data['csrf_token'])) {
+        log_event('employees', 'นำเข้าพนักงานไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+          'user_id' => $_SESSION['user_id'] ?? 'guest'
+        ]);
         echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
         exit;
       }
@@ -286,6 +406,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $employees_to_import = $data['employees'] ?? [];
       $duplicates = []; // เก็บรายชื่อที่ซ้ำ
       $prepared_data = []; // เก็บข้อมูลที่ผ่านการตรวจสอบแล้วรอ Insert
+      $import_names = [];
 
       try {
         $stmtCheckDept = $pdo->prepare("SELECT id FROM departments WHERE name = ? LIMIT 1");
@@ -317,12 +438,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           } else {
             // ถ้าไม่ซ้ำ เก็บลงอาเรย์เตรียม Insert
             $prepared_data[] = ['name' => $name, 'dept_id' => $dept_id];
+            $import_names[] = $name . ($dept_name ? " (แผนก: $dept_name)" : "");
           }
         }
 
         // 3. ถ้าพบข้อมูลซ้ำแม้แต่รายการเดียว ให้แจ้ง Error รายชื่อทั้งหมดและไม่ Insert ใดๆ ทั้งสิ้น
         if (!empty($duplicates)) {
           $error_msg = "ไม่สามารถนำเข้าได้เนื่องจากพบข้อมูลซ้ำในระบบ " . count($duplicates) . " รายการ:<br>" . implode("<br>", $duplicates);
+          log_event('employees', 'นำเข้าพนักงานไม่สำเร็จ: พบข้อมูลซ้ำ', [
+            'user_id' => $_SESSION['user_id'] ?? 'guest',
+            'duplicate_count' => count($duplicates),
+            'duplicates' => $duplicates
+          ]);
           echo json_encode(['success' => false, 'message' => $error_msg]);
           exit;
         }
@@ -335,9 +462,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $pdo->commit();
 
+        log_event('employees', 'นำเข้าพนักงานจากไฟล์สำเร็จ', [
+          'user_id' => $_SESSION['user_id'] ?? 'guest',
+          'count' => count($prepared_data),
+          'names' => $import_names
+        ]);
         echo json_encode(['success' => true, 'inserted' => count($prepared_data)]);
       } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
+        log_event('employees', 'นำเข้าพนักงานไม่สำเร็จ: ' . $e->getMessage(), [
+          'user_id' => $_SESSION['user_id'] ?? 'guest'
+        ]);
         echo json_encode(['success' => false, 'message' => 'ข้อผิดพลาด: ' . $e->getMessage()]);
       }
       exit;

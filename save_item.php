@@ -4,6 +4,7 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/logger.php';
 
 session_start();
 
@@ -17,14 +18,23 @@ function sendJson($data)
 
 // Security checks
 if (empty($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
+    log_event('items', 'บันทึกอุปกรณ์ไม่สำเร็จ: สิทธิ์ไม่เพียงพอ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest'
+    ]);
     sendJson(['success' => false, 'error' => 'สิทธิ์ไม่เพียงพอ']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    log_event('items', 'บันทึกอุปกรณ์ไม่สำเร็จ: Method Not Allowed', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest'
+    ]);
     sendJson(['success' => false, 'error' => 'Method Not Allowed']);
 }
 
 if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+    log_event('items', 'บันทึกอุปกรณ์ไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest'
+    ]);
     sendJson(['success' => false, 'error' => 'Invalid CSRF token']);
 }
 
@@ -35,8 +45,18 @@ $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null
 $image       = $_POST['old_image'] ?? '';
 $is_update   = !empty($_POST['id']);
 $id          = $is_update ? (int)$_POST['id'] : null;
+$category_name = null;
+
+if ($category_id) {
+    $stmtCat = $pdo->prepare("SELECT name FROM categories WHERE id = ? LIMIT 1");
+    $stmtCat->execute([$category_id]);
+    $category_name = $stmtCat->fetchColumn() ?: null;
+}
 
 if ($name === '') {
+    log_event('items', 'บันทึกอุปกรณ์ไม่สำเร็จ: ไม่ระบุชื่ออุปกรณ์', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest'
+    ]);
     sendJson(['success' => false, 'error' => 'กรุณากรอกชื่ออุปกรณ์']);
 }
 
@@ -46,6 +66,9 @@ if (!empty($_FILES['image']['name'])) {
     $allow = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
     if (!in_array($ext, $allow) || $_FILES['image']['size'] > 5 * 1024 * 1024) {
+        log_event('items', 'บันทึกอุปกรณ์ไม่สำเร็จ: รูปภาพไม่ถูกต้องหรือเกินขนาด', [
+            'user_id' => $_SESSION['user_id'] ?? 'guest'
+        ]);
         sendJson(['success' => false, 'error' => 'รูปไม่ถูกต้อง (jpg/png/gif/webp, ไม่เกิน 5MB)']);
     }
 
@@ -53,6 +76,9 @@ if (!empty($_FILES['image']['name'])) {
     if (!is_dir('uploads')) mkdir('uploads', 0755, true);
 
     if (!move_uploaded_file($_FILES['image']['tmp_name'], "uploads/$image")) {
+        log_event('items', 'บันทึกอุปกรณ์ไม่สำเร็จ: อัปโหลดรูปภาพไม่สำเร็จ', [
+            'user_id' => $_SESSION['user_id'] ?? 'guest'
+        ]);
         sendJson(['success' => false, 'error' => 'อัปโหลดรูปภาพไม่สำเร็จ']);
     }
 
@@ -120,6 +146,14 @@ try {
     }
 
     $pdo->commit();
+    log_event('items', $is_update ? 'แก้ไขอุปกรณ์สำเร็จ' : 'เพิ่มอุปกรณ์สำเร็จ', [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'item_id' => $id,
+        'name' => $name,
+        'stock' => $stock,
+        'category_id' => $category_id,
+        'category_name' => $category_name
+    ]);
 
     // ???????????????????????? JS ???????????????? refresh
     $stmt = $pdo->prepare("
@@ -146,6 +180,12 @@ try {
     ]);
 } catch (Exception $e) {
     $pdo->rollBack();
+    log_event('items', 'บันทึกอุปกรณ์ไม่สำเร็จ: ' . ($e->getMessage() ?: 'เกิดข้อผิดพลาด'), [
+        'user_id' => $_SESSION['user_id'] ?? 'guest',
+        'item_id' => $id ?? null,
+        'name' => $name ?? null,
+        'category_name' => $category_name
+    ]);
     sendJson([
         'success' => false,
         'error'   => $e->getMessage() ?: 'เกิดข้อผิดพลาดในการบันทึก'

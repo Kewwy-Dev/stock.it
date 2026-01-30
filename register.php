@@ -5,6 +5,7 @@ $dotenv->load();
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/asset_helper.php';
+require_once __DIR__ . '/includes/logger.php';
 
 session_start();
 
@@ -23,6 +24,9 @@ $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
     $message = ['type' => 'error', 'text' => 'Invalid CSRF token'];
+    log_event('auth', 'สมัครสมาชิกไม่สำเร็จ: CSRF token ไม่ถูกต้อง', [
+      'username' => $_POST['username'] ?? '-'
+    ]);
   } else {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -33,24 +37,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($username && $password && $name && $email) {
       if (strlen($password) < 6) {
         $message = ['type' => 'error', 'text' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'];
+        log_event('auth', 'สมัครสมาชิกไม่สำเร็จ: รหัสผ่านสั้นเกินไป', [
+          'username' => $username ?: '-'
+        ]);
       } else {
         $hashed = password_hash($password, PASSWORD_DEFAULT);
         try {
           $pdo->prepare("INSERT INTO users (username, password, name, email, role, department_id) VALUES (?, ?, ?, ?, 'user', ?)")
             ->execute([$username, $hashed, $name, $email, $dept_id]);
+          log_event('auth', 'สมัครสมาชิกสำเร็จ', [
+            'username' => $username,
+            'email' => $email,
+            'department_id' => $dept_id
+          ]);
           $_SESSION['message'] = ['type' => 'success', 'text' => 'สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ'];
           header('Location: login');
           exit;
         } catch (PDOException $e) {
           if ($e->getCode() == 23000) {
             $message = ['type' => 'error', 'text' => 'ชื่อผู้ใช้หรืออีเมลนี้มีอยู่ในระบบแล้ว'];
+            log_event('auth', 'สมัครสมาชิกไม่สำเร็จ: ชื่อผู้ใช้หรืออีเมลซ้ำ', [
+              'username' => $username ?: '-',
+              'email' => $email ?: '-'
+            ]);
           } else {
             $message = ['type' => 'error', 'text' => 'เกิดข้อผิดพลาดในการสมัคร'];
+            log_event('auth', 'สมัครสมาชิกไม่สำเร็จ: เกิดข้อผิดพลาด', [
+              'username' => $username ?: '-'
+            ]);
           }
         }
       }
     } else {
       $message = ['type' => 'error', 'text' => 'กรุณากรอกข้อมูลให้ครบ'];
+      log_event('auth', 'สมัครสมาชิกไม่สำเร็จ: กรอกข้อมูลไม่ครบ', [
+        'username' => $username ?: '-'
+      ]);
     }
   }
 }
