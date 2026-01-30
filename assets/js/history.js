@@ -60,32 +60,36 @@ function initFlatpickr() {
 }
 
 function initEventListeners() {
-  // จัดการการเลือกใน dropdown menu ทั้ง 4 ตัว
-  document
-    .querySelectorAll(".dropdown-menu a.dropdown-item:not(.text-danger)")
+  //  dropdown menu  4  ( filter bar)
+  const filterBar = document.querySelector(".filter-bar");
+  filterBar
+    ?.querySelectorAll(".dropdown-menu a.dropdown-item:not(.text-danger)")
     .forEach((item) => {
       item.addEventListener("click", (e) => {
         e.preventDefault();
         const dropdownMenu = item.closest(".dropdown-menu");
-        const button = dropdownMenu.previousElementSibling; // ปุ่ม dropdown
-        const labelSpan = button.querySelector("span");
+        const button = dropdownMenu?.previousElementSibling; // dropdown
+        const labelSpan = button?.querySelector("span");
         const hiddenInput = button
-          .closest(".col-12, .col-md-3, .col-md-2, .col-lg-2")
+          ?.closest(".col-12, .col-md-3, .col-md-2, .col-lg-2")
           ?.querySelector('input[type="hidden"]');
 
-        // อัปเดตข้อความบนปุ่ม
-        labelSpan.textContent = item.textContent.trim();
+        if (labelSpan) {
+          labelSpan.textContent = item.textContent.trim();
+        }
 
-        // อัปเดตค่าใน hidden input
+        // hidden input
         if (hiddenInput) {
           hiddenInput.value = item.dataset.value || "";
         }
 
-        // อัปเดต active class
-        dropdownMenu
-          .querySelectorAll(".dropdown-item")
-          .forEach((i) => i.classList.remove("active"));
-        item.classList.add("active");
+        // active class
+        if (dropdownMenu) {
+          dropdownMenu
+            .querySelectorAll(".dropdown-item")
+            .forEach((i) => i.classList.remove("active"));
+          item.classList.add("active");
+        }
 
         currentPage = 1;
         render(getFilteredData());
@@ -100,7 +104,7 @@ function initEventListeners() {
       "categoryDropdown",
       "categoryLabel",
       "filterCategory",
-      "— —",
+      "— ทุกหมวดหมู่ —",
     );
   });
 
@@ -111,7 +115,7 @@ function initEventListeners() {
       "itemDropdown",
       "itemLabel",
       "filterItem",
-      "— —",
+      "— ค้นหาทุกอุปกรณ์ —",
     );
   });
 
@@ -128,7 +132,7 @@ function initEventListeners() {
       "companyDropdown",
       "companyLabel",
       "filterCompany",
-      "— —",
+      "— ทุกบริษัท —",
     );
   });
 
@@ -139,6 +143,7 @@ function initEventListeners() {
 
   // Export Button
   document.getElementById("exportBtn")?.addEventListener("click", exportCSV);
+  document.getElementById("exportBtnMobile")?.addEventListener("click", exportCSV);
 }
 
 function clearDropdown(dropdownId, labelId, hiddenId, defaultText) {
@@ -175,15 +180,15 @@ function clearAllFilters() {
     "categoryDropdown",
     "categoryLabel",
     "filterCategory",
-    "— —",
+    "— ทุกหมวดหมู่ —",
   );
-  clearDropdown("itemDropdown", "itemLabel", "filterItem", "— —");
-  clearDropdown("typeDropdown", "typeLabel", "filterType", "— —");
+  clearDropdown("itemDropdown", "itemLabel", "filterItem", "— ค้นหาทุกอุปกรณ์ —");
+  clearDropdown("typeDropdown", "typeLabel", "filterType", "— ทุกประเภท —");
   clearDropdown(
     "companyDropdown",
     "companyLabel",
     "filterCompany",
-    "— —",
+    "— ทุกบริษัท —",
   );
 
   currentPage = 1;
@@ -228,6 +233,8 @@ function getFilteredData() {
 function render(filtered = data) {
   const tbody = document.getElementById("historyBody");
   const noData = document.getElementById("noData");
+  const cards = document.getElementById("historyCards");
+  const noDataCards = document.getElementById("noDataCards");
 
   if (!tbody) {
     console.error("ไม่พบ #historyBody");
@@ -235,21 +242,32 @@ function render(filtered = data) {
   }
 
   tbody.innerHTML = "";
+  if (cards) cards.innerHTML = "";
 
   if (filtered.length === 0) {
     noData?.classList.remove("d-none");
+    noDataCards?.classList.remove("d-none");
     updatePagination(0);
     updateFilterSummary(0);
     return;
   }
 
   noData?.classList.add("d-none");
+  noDataCards?.classList.add("d-none");
 
   const start = (currentPage - 1) * rowsPerPage;
   const end = Math.min(start + rowsPerPage, filtered.length);
   const pageData = filtered.slice(start, end);
 
-  pageData.forEach((r) => {
+  renderTableRows(pageData, tbody);
+  renderCards(pageData, cards);
+
+  updatePagination(filtered.length);
+  updateFilterSummary(filtered.length);
+}
+
+function renderTableRows(rows, tbody) {
+  rows.forEach((r) => {
     const tr = document.createElement("tr");
 
     const emp = r.emp_name
@@ -281,9 +299,104 @@ function render(filtered = data) {
     `;
     tbody.appendChild(tr);
   });
+}
 
-  updatePagination(filtered.length);
-  updateFilterSummary(filtered.length);
+function renderCards(rows, container) {
+  if (!container) return;
+
+  rows.forEach((r) => {
+    const typeText = r.type === "OUT" ? "เบิก" : "เพิ่ม";
+    const typeClass =
+      r.type === "OUT" ? "text-danger bg-danger-subtle" : "text-success bg-success-subtle";
+    const emp = r.emp_name
+      ? `${esc(r.emp_name)}${r.dept_name ? " (" + esc(r.dept_name) + ")" : ""}`
+      : "-";
+    const company = r.company_name ? esc(r.company_name) : "-";
+    const empDeptCompany = company !== "-" ? `${emp} / ${company}` : emp;
+    const detailId = `history-detail-${r.id}`;
+
+    const card = document.createElement("div");
+    card.className = "history-card";
+    card.innerHTML = `
+      <div class="history-card-header toggle-detail-row" role="button" aria-expanded="false" aria-controls="${detailId}">
+        <span class="badge history-card-type ${typeClass}">${typeText}</span>
+        <div class="history-card-item">${esc(r.item_name || "-")}</div>
+        <button class="btn btn-link btn-sm p-0 toggle-detail floating-toggle" type="button" aria-label="ซ่อน/แสดงรายละเอียด">
+          <i class="bi bi-chevron-down"></i>
+        </button>
+      </div>
+      <div id="${detailId}" class="collapse mt-3">
+        <div class="history-detail">
+          <div class="history-detail-row">
+            <div class="history-detail-label">วันที่ :</div>
+            <div class="history-detail-value">${formatDate(r.transaction_date || "-")}</div>
+          </div>
+          <div class="history-detail-row">
+            <div class="history-detail-label">อุปกรณ์ :</div>
+            <div class="history-detail-value">${esc(r.item_name || "-")}</div>
+          </div>
+          <div class="history-detail-row">
+            <div class="history-detail-label">ประเภท :</div>
+            <div class="history-detail-value">
+              <span class="badge ${typeClass}">${typeText}</span>
+            </div>
+          </div>
+          <div class="history-detail-row">
+            <div class="history-detail-label">จำนวน :</div>
+            <div class="history-detail-value">${formatNum(r.quantity)}</div>
+          </div>
+          <div class="history-detail-row">
+            <div class="history-detail-label">คงเหลือ :</div>
+            <div class="history-detail-value">${formatNum(r.current_stock_after || r.stock || "-")}</div>
+          </div>
+          <div class="history-detail-row">
+            <div class="history-detail-label">ผู้เบิก/แผนก :</div>
+            <div class="history-detail-value">${emp}</div>
+          </div>
+          <div class="history-detail-row">
+            <div class="history-detail-label">บริษัท :</div>
+            <div class="history-detail-value">${company || "-"}</div>
+          </div>
+          <div class="history-detail-row">
+            <div class="history-detail-label">หมายเหตุ :</div>
+            <div class="history-detail-value">${esc(r.note || r.memo || "-")}</div>
+          </div>
+          <div class="history-detail-row history-detail-actions">
+            <button class="btn btn-sm btn-outline-danger delete-btn"
+                    data-id="${r.id}"
+                    data-info="${esc(r.item_name || "-")}">
+              <i class="bi bi-trash"></i> ลบ
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(card);
+
+    const collapseEl = card.querySelector(`#${detailId}`);
+    const toggleBtn = card.querySelector(".toggle-detail");
+    const toggleRow = card.querySelector(".toggle-detail-row");
+    if (collapseEl && toggleBtn) {
+      if (toggleRow) {
+        toggleRow.addEventListener("click", () => {
+          bootstrap.Collapse.getOrCreateInstance(collapseEl).toggle();
+        });
+      }
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        bootstrap.Collapse.getOrCreateInstance(collapseEl).toggle();
+      });
+      collapseEl.addEventListener("show.bs.collapse", () => {
+        toggleBtn.innerHTML = '<i class="bi bi-chevron-up"></i>';
+        if (toggleRow) toggleRow.setAttribute("aria-expanded", "true");
+      });
+      collapseEl.addEventListener("hide.bs.collapse", () => {
+        toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+        if (toggleRow) toggleRow.setAttribute("aria-expanded", "false");
+      });
+    }
+  });
 }
 
 function updatePagination(totalItems) {
@@ -337,15 +450,21 @@ function updatePagination(totalItems) {
 
 function updateFilterSummary(count) {
   const summary = document.getElementById("filterSummary");
-  const totalSpan = document.getElementById("totalResults");
+  const totalSpan = document.getElementById("resultCount");
+  const detailsSpan = document.getElementById("filterDetails");
 
-  if (!summary || !totalSpan) return;
+  if (!summary || !totalSpan || !detailsSpan) return;
+
+  if (typeof count !== "number") {
+    count = getFilteredData().length;
+  }
 
   if (count === data.length && !hasAnyFilter()) {
     summary.classList.add("d-none");
   } else {
     summary.classList.remove("d-none");
     totalSpan.textContent = count;
+    detailsSpan.innerHTML = buildFilterDetailBadges();
   }
 }
 
@@ -358,6 +477,77 @@ function hasAnyFilter() {
     hiddenFrom?.value ||
     hiddenTo?.value
   );
+}
+
+function buildFilterDetailBadges() {
+  const parts = [];
+
+  const categoryLabel = document.getElementById("categoryLabel")?.textContent?.trim();
+  if (categoryLabel && categoryLabel !== "— —" && categoryLabel !== "— ทุกหมวดหมู่ —") {
+    parts.push({
+      label: "หมวดหมู่",
+      value: categoryLabel,
+      cls: "filter-badge-category",
+    });
+  }
+
+  const itemLabel = document.getElementById("itemLabel")?.textContent?.trim();
+  if (itemLabel && itemLabel !== "— —" && itemLabel !== "— ค้นหาทุกอุปกรณ์ —") {
+    parts.push({
+      label: "อุปกรณ์",
+      value: itemLabel,
+      cls: "filter-badge-item",
+    });
+  }
+
+  const typeLabel = document.getElementById("typeLabel")?.textContent?.trim();
+  if (typeLabel && typeLabel !== "— —" && typeLabel !== "— ทุกประเภท —") {
+    const typeValue = document.getElementById("filterType")?.value || "";
+    const typeClass =
+      typeValue === "OUT"
+        ? "filter-badge-type-out"
+        : typeValue === "IN"
+          ? "filter-badge-type-in"
+          : "filter-badge-type";
+    parts.push({
+      label: "ประเภท",
+      value: typeLabel,
+      cls: typeClass,
+    });
+  }
+
+  const companyLabel = document.getElementById("companyLabel")?.textContent?.trim();
+  if (companyLabel && companyLabel !== "— —" && companyLabel !== "— ทุกบริษัท —") {
+    parts.push({
+      label: "บริษัท",
+      value: companyLabel,
+      cls: "filter-badge-company",
+    });
+  }
+
+  const dateFrom = hiddenFrom?.value || "";
+  const dateTo = hiddenTo?.value || "";
+  if (dateFrom || dateTo) {
+    const fromText = dateFrom ? formatDate(dateFrom) : "-";
+    const toText = dateTo ? formatDate(dateTo) : "-";
+    parts.push({
+      label: "วันที่",
+      value: `${fromText} ถึง ${toText}`,
+      cls: "filter-badge-date",
+    });
+  }
+
+  if (parts.length === 0) {
+    return "";
+  }
+
+  const badges = parts
+    .map((p) => {
+      return `<span class="filter-badge ${p.cls}">${esc(p.label)}: ${esc(p.value)}</span>`;
+    })
+    .join(" ");
+
+  return ` <span class="filter-detail-label">| กรอง:</span> ${badges}`;
 }
 
 // Utility Functions
@@ -388,7 +578,7 @@ function exportCSV() {
     "\uFEFFวันที่,อุปกรณ์,หมวดหมู่,ประเภท,จำนวน,คงเหลือ,ผู้เบิก/แผนก,บริษัท,หมายเหตุ\n";
 
   filtered.forEach((r) => {
-    const typeText = r.type === "IN" ? "เข้า" : "ออก";
+    const typeText = r.type === "IN" ? "เพิ่ม" : "เบิก";
     const emp = r.emp_name
       ? r.emp_name + (r.dept_name ? " (" + r.dept_name + ")" : "")
       : "-";

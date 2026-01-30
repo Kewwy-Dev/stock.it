@@ -169,7 +169,7 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="categoryDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-grid-3x3-gap-fill text-primary fs-5"></i>
-                <span id="categoryLabel" class="text-truncate">—  —</span>
+                <span id="categoryLabel" class="text-truncate">— ทุกหมวดหมู่ —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
@@ -195,7 +195,7 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="itemDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-search text-primary fs-5"></i>
-                <span id="itemLabel" class="text-truncate">— —</span>
+                <span id="itemLabel" class="text-truncate">— ค้นหาทุกอุปกรณ์ —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
@@ -221,14 +221,14 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="typeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-arrow-left-right text-primary fs-5"></i>
-                <span id="typeLabel" class="text-truncate">— —</span>
+                <span id="typeLabel" class="text-truncate">— ทุกประเภท —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end w-100 shadow" aria-labelledby="typeDropdown">
               <li><a class="dropdown-item" href="#" data-value="">— ทุกประเภท —</a></li>
-              <li><a class="dropdown-item" href="#" data-value="IN">เข้า</a></li>
-              <li><a class="dropdown-item" href="#" data-value="OUT">ออก</a></li>
+              <li><a class="dropdown-item" href="#" data-value="IN">เพิ่ม</a></li>
+              <li><a class="dropdown-item" href="#" data-value="OUT">เบิก</a></li>
               <li>
                 <hr class="dropdown-divider my-1">
                 </hr>
@@ -246,7 +246,7 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
               type="button" id="companyDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-building text-primary fs-5"></i>
-                <span id="companyLabel" class="text-truncate">— —</span>
+                <span id="companyLabel" class="text-truncate">— ทุกบริษัท —</span>
               </div>
               <i class="bi bi-chevron-down small text-muted"></i>
             </button>
@@ -270,6 +270,11 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
             <i class="bi bi-arrow-repeat me-1"></i> ล้างตัวกรอง
           </button>
         </div>
+        <div class="col-12 col-md-12 col-lg-12 mt-2 history-export-mobile">
+          <button id="exportBtnMobile" class="btn btn-success w-100">
+            <i class="bi bi-cloud-arrow-up-fill me-1"></i> Excel
+          </button>
+        </div>
       </div>
     </div>
 
@@ -287,7 +292,7 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
     <!-- Table -->
     <div class="card shadow-lg border-0">
       <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive history-table-wrap">
           <table class="table table-hover mb-0 align-middle">
             <thead class="table-light">
               <tr>
@@ -322,6 +327,12 @@ $json_trans = json_encode($trans, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
           </div>
         </div>
       </div>
+    </div>
+    <div id="historyCards" class="history-cards"></div>
+    <div id="noDataCards" class="text-center py-4 text-muted d-none">
+      <i class="bi bi-journal-text display-6 opacity-50"></i>
+      <h6 class="mt-2 mb-1">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</h6>
+      <p class="mb-0">ลองปรับตัวกรอง หรือกดปุ่ม "ล้าง" เพื่อดูข้อมูลทั้งหมด</p>
     </div>
 
     <!-- Pagination -->

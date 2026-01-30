@@ -76,6 +76,59 @@ body {
   font-size: 0.85rem;
 }
 
+.filter-detail-label {
+  margin-left: 0.5rem;
+  margin-right: 0.25rem;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.filter-badge {
+  display: inline-block;
+  margin-left: 0.25rem;
+  margin-bottom: 0.15rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.filter-badge-category {
+  background: #e7f1ff;
+  color: #0d6efd;
+}
+
+.filter-badge-item {
+  background: #e8f7ff;
+  color: #0aa2c0;
+}
+
+.filter-badge-type {
+  background: #e8f5e9;
+  color: #198754;
+}
+
+.filter-badge-type-out {
+  background: #fdecea;
+  color: #dc3545;
+}
+
+.filter-badge-type-in {
+  background: #e8f5e9;
+  color: #198754;
+}
+
+.filter-badge-company {
+  background: #fff4e6;
+  color: #fd7e14;
+}
+
+.filter-badge-date {
+  background: #f3e8ff;
+  color: #6f42c1;
+}
+
 /* Responsive Adjustments - General */
 .container {
   padding-left: 1rem;
@@ -94,6 +147,110 @@ body {
 .table-responsive {
   border-radius: 12px;
   overflow-x: auto;
+}
+
+/* History cards (tablet/mobile) */
+.history-cards {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.history-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+.history-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toggle-detail-row {
+  cursor: pointer;
+}
+
+.history-card-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.1rem;
+}
+
+.history-card-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+.history-card-item {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+.history-card-type {
+  white-space: nowrap;
+}
+
+.floating-toggle {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.floating-toggle:hover,
+.floating-toggle:focus {
+  color: var(--primary);
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.history-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-detail-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.history-detail-label {
+  min-width: 120px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.history-detail-value {
+  flex: 1;
+  color: #212529;
+}
+
+.history-detail-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 576px) {
+  .history-detail-label {
+    min-width: 100px;
+  }
+}
+
+.history-card table {
+  font-size: 0.9rem;
+}
+
+.history-card .table th {
+  white-space: nowrap;
+  font-weight: 600;
 }
 
 /* Mobile (up to 576px) */
@@ -140,6 +297,11 @@ body {
   .pagination .page-link {
     padding: 0.4rem 0.75rem;
   }
+  .pagination .page-item:first-child .page-link,
+  .pagination .page-item:last-child .page-link {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+  }
 
   #filterSummary {
     font-size: 0.85rem;
@@ -149,6 +311,11 @@ body {
   #noData {
     font-size: 0.9rem;
   }
+
+  .history-card {
+    padding: 0.85rem;
+  }
+
 }
 
 /* iPad/Tablet (577px to 991px) */
@@ -185,7 +352,7 @@ body {
 
   #exportBtn {
     font-size: 0.9rem;
-    padding: 0.45rem;
+    padding: 0.45rem; 
   }
 
   .pagination {
@@ -200,6 +367,7 @@ body {
     font-size: 0.9rem;
     padding: 0.9rem;
   }
+
 }
 
 /* Desktop (992px and up) - Keep original, no major changes */
@@ -210,6 +378,28 @@ body {
 
   .table {
     font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 991px) {
+  .history-table-wrap {
+    display: none;
+  }
+  .history-cards {
+    display: grid;
+  }
+  .history-export-mobile {
+    display: flex;
+  }
+}
+
+@media (min-width: 992px) {
+  .history-cards,
+  #noDataCards {
+    display: none !important;
+  }
+  .history-export-mobile {
+    display: none !important;
   }
 }
 /* ทำให้ select ดูเหมือนใน index.php */

@@ -227,7 +227,7 @@
       }
       .transaction-table .col-quantity {
         text-align: center !important; 
-        min-width: 80px; 
+        min-width: 60px; 
       }
       .transaction-table .col-date {
         text-align: center !important; min-width: 90px;
